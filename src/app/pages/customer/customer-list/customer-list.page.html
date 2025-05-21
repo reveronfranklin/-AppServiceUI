@@ -1,0 +1,87 @@
+<ion-header>
+  <ion-toolbar color='primary'>
+    <!-- Boton principal del menu -->
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+
+    <!-- Botonos auxiliares -->
+    <ion-buttons slot="end">
+
+      <!-- Refrescar lista  -->
+      <ion-button (click)="refresh()">
+        <ion-icon name="refresh"></ion-icon>
+      </ion-button>
+      <!-- añadir cotizacion -->
+      <ion-button (click)="onClickAdd()">
+        <ion-icon name="add-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+
+
+    <ion-title>Clientes: {{ this.nombreUsuario}}</ion-title>
+  </ion-toolbar>
+
+
+  <br>
+  <ion-item>
+
+    <ion-searchbar [(ngModel)]="searchText" (ionChange)="onChangeSearchText($event)"
+      placeholder="IdCliente-Nombre Ciente-Rif" debounce=800></ion-searchbar>
+
+  </ion-item>
+
+  <ion-row>
+
+    <ion-col *ngIf="cargando">
+      <div class="ion-text-center">
+
+        <h3>Cargando datos.........</h3>
+
+      </div>
+    </ion-col>
+
+  </ion-row>
+
+
+
+
+
+</ion-header>
+
+<ion-content>
+
+
+  <!-- listado de cotizaciones  -->
+  <ion-grid>
+    <ion-row>
+      <ion-col size-lg="3" size-md="3" size-sm="3" size="12" *ngFor="let item of mtrClienteDto">
+        <ion-card (click)="presentActionSheet(item)" [class]="item.claseCss">
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> <b> Cliente: </b> {{ item.codigo }} {{ item.nombreCliente}}  </p>
+            </ion-item>
+
+          </ion-card-header>
+
+          <ion-card-content class="ion-margin-top">
+            <p > <b> Id: </b> {{item.id}} </p>
+            <p > <b> Sector: </b> {{item.descripcionSector}} </p>
+            <p > <b> Ramo: </b> {{item.descripcionRamo}} </p>
+            <p > <b> Estatus: </b> {{item.status}} </p>
+            <p > <b> Direccion: </b> {{item.direccion}} </p>
+            <p > {{item.direccion1}} </p>
+            <p> <b> Rif Cli: </b> {{ item.rifCliente }} </p>
+            <p> <b> Rif Dir: </b> {{ item.rifDireccion }} </p>
+
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+  <ion-grid>
+
+  </ion-grid>
+
+
+</ion-content>

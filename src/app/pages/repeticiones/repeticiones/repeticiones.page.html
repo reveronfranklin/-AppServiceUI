@@ -1,0 +1,192 @@
+<ion-header>
+  <ion-toolbar color='primary'>
+    <ion-title>Repeticiones</ion-title>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-button (click)="gotoBack()">
+        <ion-icon name="arrow-back" size="large"></ion-icon>
+      </ion-button>
+     <!--  <ion-back-button defaultHref="/" text=""></ion-back-button> -->
+
+    </ion-buttons>
+
+        <!-- Botonos auxiliares -->
+      <ion-buttons slot="end">
+        <!-- Refrescar lista  -->
+        <ion-button (click)="refresh()">
+          <ion-icon name="refresh"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+
+  </ion-toolbar>
+  <ion-item *ngIf="!this.appOrdenProductoRepeticionGetDto">
+    <ion-label>No Data</ion-label>
+  </ion-item>
+</ion-header>
+
+
+
+
+
+  <ion-content class="ion-margin">
+
+    <ion-card *ngIf="appOrdenProductoRepeticionSelected" (click)="presentActionSheet(cotizacion)" [class]="cotizacion.claseCss">
+      <ion-card-header color="light">
+         <ion-item color="light" lines="none">
+           <p> Cotizacion: {{ cotizacion.cotizacion }} </p>
+         </ion-item>
+         <p> Cliente: {{cotizacion.mtrClienteDto.descripcion}} </p>
+
+
+       </ion-card-header>
+
+       <ion-card-content class="ion-margin-top"  >
+        <div >
+          <p > Orden Anterior: {{ appOrdenProductoRepeticionSelected.orden }} {{ appOrdenProductoRepeticionSelected.nombreProducto}} {{appOrdenProductoRepeticionSelected.nombreForma}}</p>
+          <p > Medidas: {{ appOrdenProductoRepeticionSelected.basicaHumano }} X {{ appOrdenProductoRepeticionSelected.opuestaHumano }} Partes: {{ appOrdenProductoRepeticionSelected.partesFormula }} Tintas: {{ appOrdenProductoRepeticionSelected.cantTintas }} </p>
+          <p > Papel: {{ appOrdenProductoRepeticionSelected.papelPrimeraParte }} {{ appOrdenProductoRepeticionSelected.papelSegundaParte }} {{ appOrdenProductoRepeticionSelected.papelTerceraParte }}  {{ appOrdenProductoRepeticionSelected.papelCuartaParte }} {{ appOrdenProductoRepeticionSelected.papelQuintaParte }} </p>
+          <p > Formas: {{ appOrdenProductoRepeticionSelected.cantidadOrdenada }} Millares: {{ appOrdenProductoRepeticionSelected.cantidadOrdenada / 1000 }} </p>
+          <p > Unitario: {{ appOrdenProductoRepeticionSelected.precioUnitarioUsd }} Total: {{ appOrdenProductoRepeticionSelected.totalPropuestaUsd }} </p>
+
+          <p > Cod Producto: {{appOrdenProductoRepeticionSelected?.codProducto}} {{appOrdenProductoRepeticionSelected?.appProductsGetDto?.code}}-{{appOrdenProductoRepeticionSelected?.appProductsGetDto?.description1}}</p>
+        </div>
+
+
+
+
+       </ion-card-content>
+     </ion-card>
+
+    <ion-item *ngIf="this.usuario.role==='387'">
+        <div>
+        <p> Producto a Modificar : {{this.productoSeleccionado.code}} External Code: {{this.productoSeleccionado.appProduct?.externalCode}} {{this.productoSeleccionado.description}}===>  </p>
+        </div>
+
+        <ion-button (click)="onBuscarProductoGeneral()" size="large">
+        <ion-icon name="search-outline" size="large"></ion-icon>
+        </ion-button>
+        <div>
+        <ion-icon *ngIf="showLoading" name="cloud-upload-outline" size="large"></ion-icon>
+        <ion-button *ngIf="!showLoading" (click)="onSave()" size="large">
+          <ion-icon name="save-outline" size="large"></ion-icon>
+          <!-- <ion-icon name="checkmark" style="color: white; font-size: 2.2em; font-weight:900;" slot="end"></ion-icon> -->
+        </ion-button>
+        </div>
+    </ion-item>
+
+     <ion-item>
+      <ion-col>
+        <ion-label>Producto:</ion-label>
+        <ion-select   (ionChange)="nombreProductoChanged($event)" >
+          <ion-select-option *ngFor="let item of productos" [value]="item">{{item.nombreProducto}} </ion-select-option>
+        </ion-select>
+
+      </ion-col>
+
+  </ion-item>
+
+    <table>
+
+      <tr>
+        <th></th>
+        <th>
+
+        </th>
+        <th>
+
+          <ion-select  (ionChange)="nombreFormaChanged($event)" >
+          <ion-select-option *ngFor="let item of nombresForma" [value]="item">{{item.nombreForma}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select   (ionChange)="basicaChanged($event)" >
+          <ion-select-option *ngFor="let item of medidasBasica" [value]="item">{{item.basicaHumano}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select (ionChange)="opuestaChanged($event)" >
+            <ion-select-option *ngFor="let item of medidasOpuesta" [value]="item">{{item.opuestaHumano}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select (ionChange)="partesChanged($event)" >
+            <ion-select-option *ngFor="let item of cantidadPartes" [value]="item">{{item.partes_formula}}</ion-select-option>
+            </ion-select>
+        </th>
+        <th>
+          <ion-select  (ionChange)="tintasChanged($event)" >
+            <ion-select-option *ngFor="let item of cantidadTintas" [value]="item">{{item.cant_Tintas}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select  (ionChange)="papelesPrimeraParteChanged($event)" >
+            <ion-select-option *ngFor="let item of papelesPrimeraParte" [value]="item">{{item.papelprimeraparte}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select  (ionChange)="papelesSegundaParteChanged($event)" >
+            <ion-select-option *ngFor="let item of papelesSegundaParte" [value]="item">{{item.papelsegundaparte}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select *ngIf="papelesTerceraParte" (ionChange)="papelesTerceraParteChanged($event)" >
+            <ion-select-option *ngFor="let item of papelesTerceraParte" [value]="item">{{item.papelterceraparte}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select *ngIf="papelesCuartaParte" (ionChange)="papelesCuartaParteChanged($event)" >
+            <ion-select-option *ngFor="let item of papelesCuartaParte" [value]="item">{{item.papelcuartaparte}}</ion-select-option>
+          </ion-select>
+        </th>
+        <th>
+          <ion-select *ngIf="papelesQuintaParte" (ionChange)="papelesQuintaParteChanged($event)" >
+            <ion-select-option *ngFor="let item of papelesQuintaParte" [value]="item">{{item.papelquintaparte}}</ion-select-option>
+          </ion-select>
+        </th>
+      </tr>
+      <tr>
+        <th>Orden</th>
+        <th>Fecha</th>
+        <th>Forma</th>
+        <th>Basica</th>
+        <th>Opuesta</th>
+        <th>Partes</th>
+        <th>Tintas</th>
+        <th>Papel 1</th>
+        <th>Papel 2</th>
+        <th>Papel 3</th>
+        <th>Papel 4</th>
+        <th>Papel 5</th>
+
+
+      </tr>
+
+    <tr  *ngFor="let item of appOrdenProductoRepeticionGetDto">
+
+      <!-- <td (click)="presentActionSheet(item)">{{ item.fechaString | date }} </td> -->
+        <div *ngIf="item.appproductsId===0">
+          <td bgcolor="#FB2576" (click)="setItem(item)">{{ item.orden }}</td>
+        </div>
+        <div *ngIf="item.appproductsId>0">
+          <td (click)="setItem(item)">{{ item.orden }}</td>
+        </div>
+
+        <td (click)="setItem(item)">{{ item.fechaString}} </td>
+        <td (click)="setItem(item)">{{ item.nombreForma }} ({{item.codProducto}})</td>
+        <td (click)="setItem(item)">{{ item.basicaHumano }}</td>
+        <td (click)="setItem(item)">{{ item.opuestaHumano }}</td>
+        <td (click)="setItem(item)">{{ item.partesFormula }}</td>
+        <td (click)="setItem(item)">{{ item.cantTintas }}</td>
+        <td (click)="setItem(item)">{{ item.papelPrimeraParte }}</td>
+        <td (click)="setItem(item)">{{ item.papelSegundaParte }}</td>
+        <td (click)="setItem(item)">{{ item.papelTerceraParte }}</td>
+        <td (click)="setItem(item)">{{ item.papelCuartaParte }}</td>
+        <td (click)="setItem(item)">{{ item.papelQuintaParte }}</td>
+
+    </tr>
+
+    </table>
+  </ion-content>
+
+
+

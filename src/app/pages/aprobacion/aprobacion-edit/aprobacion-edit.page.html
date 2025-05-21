@@ -1,0 +1,157 @@
+<ion-header>
+  <ion-toolbar color='primary'>
+    <ion-title> {{titulo}} </ion-title>
+    <ion-buttons slot="end">
+
+      <div>
+
+        <ion-button (click)="openLink()" size="large">
+          <ion-icon name="print-outline" size="large"></ion-icon>
+
+          <!-- <ion-icon name="checkmark" style="color: white; font-size: 2.2em; font-weight:900;" slot="end"></ion-icon> -->
+        </ion-button>
+      </div>
+
+
+      <!--  <ion-button *ngIf="mostrarEnDesarrollo" size="large">
+                    <ion-icon name="brush" size="large"></ion-icon>
+                </ion-button> -->
+
+      <div>
+        <ion-icon *ngIf="showLoading" name="cloud-upload-outline" size="large"></ion-icon>
+        <ion-button *ngIf="!showLoading" (click)="update()" size="large">
+          <ion-icon name="save-outline" size="large"></ion-icon>
+          <!-- <ion-icon name="checkmark" style="color: white; font-size: 2.2em; font-weight:900;" slot="end"></ion-icon> -->
+        </ion-button>
+      </div>
+
+
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-item>
+    <label>
+      <p class="ion-text-wrap">
+        {{ codigo }} {{rif}} {{nombreCliente}}
+      </p>
+      <p *ngIf="mensaje !==''">
+        {{mensaje}}
+      </p>
+    </label>
+  </ion-item>
+  <ion-row>
+
+    <ion-col *ngIf="guardando">
+      <div class="ion-text-center">
+
+        <h3>Guardando.........</h3>
+
+      </div>
+    </ion-col>
+
+  </ion-row>
+</ion-header>
+
+<ion-content>
+
+  <ion-card>
+
+    <ion-card-header color="light">
+      <ion-item color="light" lines="none">
+        <p> <b> Cliente: </b> {{itemAprobacion.idCliente}} {{itemAprobacion.razonSocial}}</p>
+      </ion-item>
+
+    </ion-card-header>
+
+    <ion-card-content class="ion-margin-top">
+      <p> <b> Cotizacion: </b> {{itemAprobacion.cotizacion}} </p>
+      <p *ngIf="itemAprobacion.cotizacionCorta>0"> <b> Cotizacion Corta: </b> {{itemAprobacion.cotizacionCorta}} </p>
+
+      <p> <b> Oficina: </b> {{itemAprobacion.nombreOficina}} </p>
+      <p> <b> Vendedor: </b> {{itemAprobacion.vendedor}} </p>
+      <p> <b> Producto: </b> {{itemAprobacion.producto}} </p>
+      <p> <b> Fecha: </b> {{itemAprobacion.fechaString}} </p>
+      <p> <b> Total Propuesta Usd: </b> {{itemAprobacion.totalPropuestaUsdString}} </p>
+      <p> <b> Estatus Planta: </b> {{itemAprobacion.estatusPlanta}} </p>
+      <p> <b> Recibo de Pago: </b> {{itemAprobacion.recibo}} </p>
+      <p *ngIf="itemAprobacion.orden>0"> <b>Orden: </b> {{itemAprobacion.orden}} </p>
+      <p *ngIf="itemAprobacion.fiscal.length>0"> <b> </b> {{itemAprobacion.fiscal}} </p>
+      <p> <b> Obs Excepcion: </b> {{itemAprobacion.observacionesCreditoExcepcion}} </p>
+      <p> <b> Estatus Excepcion: </b> {{itemAprobacion.dercripcionStatusExcepcion}} </p>
+
+    </ion-card-content>
+
+    <form [formGroup]="form" novalidate (ngSubmit)="update()">
+      <div>
+
+        <ion-item>
+          <ion-label position="floating">Tasa:</ion-label>
+          <ion-input type="number" formControlName="tasaExcepcion" (ionChange)="onChangeTasa($event)"></ion-input>
+        </ion-item>
+        <div *ngIf="tasa > 0">
+          <ion-item (click)="showPicker=!showPicker">
+            <ion-label>Fecha Pago:</ion-label>
+            <ion-text slot="end">
+              {{this.fechaPagoFormated}}
+            </ion-text>
+          </ion-item>
+        </div>
+
+        <ion-datetime #datetime presentation="date" [value]="this.fechaPagoFormated"
+          (ionChange)="onChangeFechaPago($event)" size="cover" *ngIf="showPicker">
+        </ion-datetime>
+      </div>
+
+      <ion-item>
+        <ion-label>Imprimir Factura en USD?</ion-label>
+        <ion-checkbox formControlName="imprimirFacturaEnUSD"></ion-checkbox>
+      </ion-item>
+    </form>
+
+
+    <div>
+      <div *ngIf="!guardando">
+        <!--  <ion-button (click)="update()">
+          Guardar
+          <ion-icon slot="end" name="cog-outline"></ion-icon>
+
+        </ion-button> -->
+
+
+        <ion-button *ngIf="itemAprobacion.estatusPlanta==='A'" (click)="presentActionSheet(item)">
+          Aprobar
+          <ion-icon slot="end" name="cog-outline"></ion-icon>
+
+        </ion-button>
+        <ion-button color="warning" *ngIf="itemAprobacion.observacionesCreditoExcepcion.length>0 &&  
+          itemAprobacion.solicitudCerrada===false" (click)="presentActionSheetExcepcion(item)">
+          Cerrar Excepcion
+          <ion-icon slot="end" name="cog-outline"></ion-icon>
+
+        </ion-button>
+
+        <!--   <ion-button color="secondary" (click)="update()">
+
+          Excepcion
+          <ion-icon slot="end" name="star"></ion-icon>
+        </ion-button> -->
+
+        <ion-button *ngIf="itemAprobacion.estatusPlanta==='A'" color="danger" (click)="retornar()">
+
+          Retornar
+          <ion-icon slot="end" name="arrow-undo-outline"></ion-icon>
+        </ion-button>
+        <ion-button (click)="onBuscarDocumento()">
+          Estado Cuenta
+          <ion-icon name="search-outline"></ion-icon>
+        </ion-button>
+      </div>
+
+    </div>
+
+
+  </ion-card>
+
+
+
+</ion-content>
