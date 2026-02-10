@@ -2,4 +2,23 @@
   display: inline-block;
   vertical-align: middle;
 }
+.col-filtros {
+  @media (min-width: 768px) {
+    // Se activa en tablets y PC
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: fit-content;
+    max-height: 90vh;
+    overflow-y: auto; // Permite scroll interno si hay demasiados filtros
+  }
+}
 
+// Opcional: Ajuste para la imagen de los productos
+ion-list img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-right: 10px;
+}

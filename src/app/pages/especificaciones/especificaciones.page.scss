@@ -1,123 +1,117 @@
+table {
+  border-collapse: collapse;
+  width: 100%;
+  padding: 25px;
+}
 
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    padding: 25px;
-  }
+th,
+td {
+  text-align: left;
+  padding: 8px;
+}
+.ion-searchbar {
+  padding: 0;
+}
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
 
-  th,
-  td {
-    text-align: left;
-    padding: 8px;
-  }
-  .ion-searchbar {
+th {
+  background-color: #4c74af;
+  color: white;
+}
 
-    padding: 0;
-  }
-  tr:nth-child(even) {
-    background-color: #f2f2f2;
-  }
+.error {
+  background-color: red;
+}
 
-  th {
-    background-color: #4c74af;
-    color: white;
-  }
+.enGrabacion {
+  background-color: var(--ion-color-primary);
+  color: var(--ion-color-primary-contrast);
+  border-radius: 10px 10px 10px 10px;
+}
+.enEspera {
+  background-color: var(--ion-color-warning);
+  color: var(--ion-color-warning-contrast);
+  border-radius: 10px 10px 10px 10px;
+}
+.ganada {
+  background-color: var(--ion-color-success);
+  color: var(--ion-color-success-contrast);
+  border-radius: 10px 10px 10px 10px;
+}
+.perdida {
+  background-color: var(--ion-color-danger);
+  color: var(--ion-color-danger-contrast);
+  border-radius: 10px 10px 10px 10px;
+}
+.container {
+  border: solid 1px rgb(53, 87, 129);
+  padding: 3px;
 
-  .error{background-color: red}
+  font-size: x-small;
 
-  .enGrabacion{
-    background-color: var(--ion-color-primary);
-    color: var(--ion-color-primary-contrast);
-    border-radius: 10px 10px 10px 10px;
-  }
-  .enEspera{
-    background-color: var(--ion-color-warning);
-    color: var(--ion-color-warning-contrast);
-    border-radius: 10px 10px 10px 10px;
-  }
-  .ganada{
-    background-color:  var(--ion-color-success);
-    color: var(--ion-color-success-contrast);
-    border-radius: 10px 10px 10px 10px;
-  }
-  .perdida{
-    background-color: var(--ion-color-danger);
-    color: var(--ion-color-danger-contrast);
-    border-radius: 10px 10px 10px 10px;
-  }
-  .container{
+  background-color: #4c74af;
+  border: radius 10px;
 
+  display: grid;
+  grid-template-columns: 1.2fr 1.3fr 1.3fr 2.8fr 2.9fr;
+  grid-template-rows: 1fr;
 
-    border: solid 1px rgb(53,87,129);
-    padding: 3px;
+  width: 100%;
+  height: 580px;
+}
 
-    font-size:  x-small;
+.containerGeneral {
+  border: solid 1px rgb(53, 87, 129);
+  padding: 5px;
+  font-size: xx-small;
 
-    background-color: #4c74af;
-    border: radius 10px;
+  background-color: #4c74af;
+  border: radius 10px;
 
-    display: grid;
-    grid-template-columns: 1.2fr 1.3fr 1.3fr 2.8fr 2.9fr;
-    grid-template-rows: 1fr;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
 
-    width: 100%;
-    height: 580px;
-  }
+  width: 100%;
+  height: 450px;
+}
+.containerflex {
+  border: solid 1px rgb(53, 87, 129);
+  padding: 3px;
+  font-size: xx-small;
 
-  .containerGeneral{
+  background-color: #4c74af;
+  border: radius 10px;
 
-    border: solid 1px rgb(53,87,129);
-    padding: 5px;
-    font-size: xx-small;
+  display: flex;
+  flex-direction: row;
 
-    background-color: #4c74af;
-    border: radius 10px;
-
-    display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-
-    width: 100%;
-    height: 450px;
-  }
-  .containerflex{
-
-    border: solid 1px rgb(53,87,129);
-    padding: 3px;
-    font-size: xx-small;
-
-    background-color: #4c74af;
-    border: radius 10px;
-
-    display: flex;
-    flex-direction: row;
-
-    width: 100%;
-    height: 400px;
-  }
-  .itemw{
-    box-sizing: border-box;
-    border: solid 3px rgb(117,19,255);
-    background-color: aqua;
-    color: black;
-    border-radius: 3px;
-  }
-  ion-item {
-    --min-height: 16px;
-    font-size:  smaller;
+  width: 100%;
+  height: 400px;
+}
+.itemw {
+  box-sizing: border-box;
+  border: solid 3px rgb(117, 19, 255);
+  background-color: aqua;
+  color: black;
+  border-radius: 3px;
+}
+ion-item {
+  --min-height: 16px;
+  font-size: smaller;
 }
 
 .padingRadio {
- padding-right: 20px;
+  padding-right: 20px;
 }
 div.scroll {
-
   width: 300px;
   overflow-x: auto;
   overflow-y: auto;
-
 }
-.scrollable{
+.scrollable {
   height: 400px;
   border: 2px;
 }

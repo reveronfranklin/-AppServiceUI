@@ -14,7 +14,10 @@ import { ClienteListPageModule } from './pages/clientes/cliente-list/cliente-lis
 import { FotosWebShowPageModule } from './pages/adjuntos/fotos-web-show/fotos-web-show.module';
 import { FotosShowPageModule } from './pages/adjuntos/fotos-show/fotos-show.module';
 
-import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import {
+  FontAwesomeModule,
+  FaIconLibrary,
+} from '@fortawesome/angular-fontawesome';
 import { fas } from '@fortawesome/free-solid-svg-icons';
 import { far } from '@fortawesome/free-regular-svg-icons';
 import { fab } from '@fortawesome/free-brands-svg-icons';
@@ -33,15 +36,15 @@ import { fab } from '@fortawesome/free-brands-svg-icons';
     ClienteListPageModule,
     FotosWebShowPageModule,
     FotosShowPageModule,
-    FontAwesomeModule
+    FontAwesomeModule,
   ],
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     {
       provide: HTTP_INTERCEPTORS,
       useClass: HttpInterceptorService,
-      multi: true
-    }
+      multi: true,
+    },
   ],
   bootstrap: [AppComponent],
 })
@@ -49,5 +52,4 @@ export class AppModule {
   constructor(library: FaIconLibrary) {
     library.addIconPacks(fas, fab, far);
   }
-
 }

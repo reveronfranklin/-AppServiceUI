@@ -31,10 +31,11 @@ export class ContactosListPage implements OnInit {
     private clienteService: ClienteService,
     private modalCtrl: ModalController,
     public actionSheetController: ActionSheetController,
-    private router: Router
+    private router: Router,
   ) {}
 
   ngOnInit() {
+    console.log('Cliente Rif recibido', this.clienteRif);
     this.cliente = this.clienteRif.cliente;
     this.rif = this.clienteRif.rif;
     this.usuario = this.gs.GetUsuario();
@@ -63,7 +64,7 @@ export class ContactosListPage implements OnInit {
         (error) => {
           this.show = false;
           console.log('en el error list contactos: ', error);
-        }
+        },
       );
   }
   onChangeSearchCliente(event) {

@@ -25,8 +25,12 @@ export class MtrClienteDireccionDto {
   claseCss: string;
   idTipoNegocio: number;
   descripcionTipoNegocio: string;
+  editable: boolean;
+  nombreOficina: string;
   sectorObj: MtrSectorDto;
   puntoReferencia: string;
+
+  nombreVendedor: string;
   direccionObj: MtrDireccionesDto;
   direccionClienteObj: MtrDireccionesDto;
 }

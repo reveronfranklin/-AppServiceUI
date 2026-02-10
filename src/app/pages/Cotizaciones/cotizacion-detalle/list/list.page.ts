@@ -13,8 +13,6 @@ import { AppGeneralQuotesGetDto } from '../../../../models/app-general-quotes-ge
 import { AppDetailQuotesGetDto } from '../../../../models/app-detail-quotes-get-dto';
 import { AppDetailQuotesDeleteDto } from '../../../../models/app-detail-quotes-delete-dto';
 
-import { EditPage } from '../edit/edit.page';
-import { Observable } from 'rxjs';
 import { AppOrdenProductoRepeticionFilterDto } from 'src/app/interfaces/app-orden-producto-repeticion-filter';
 import { RepeticionesService } from 'src/app/services/repeticiones.service';
 
@@ -50,6 +48,9 @@ export class ListPage implements OnInit {
 
   ngOnInit() {
     this.showLoading = false;
+    this.cotizacionesService.cotizacion$.subscribe((cot) => {
+      this.cotizacion = cot;
+    });
     if (!this.cotizacion.appDetailQuotesGetDto) {
       this.cotizacion.permiteAdicionarDetalle = true;
     }
@@ -65,6 +66,11 @@ export class ListPage implements OnInit {
       }
 
       this.detalleItems = this.cotizacion.appDetailQuotesGetDto;
+      console.log(
+        'cotizacion detalleItems recibido',
+        this.cotizacion.appDetailQuotesGetDto
+      );
+      console.log('detalleItems recibido', this.detalleItems);
       console.log('cotizacion', this.cotizacion);
       this.repeticionesFilter = {
         idCliente: this.cotizacion.idCliente, //this.searchText
@@ -116,10 +122,16 @@ export class ListPage implements OnInit {
   }
 
   // edita un item de la cotizacion
-  edit(item: AppDetailQuotesGetDto) {
+  edit(itemRecibido: AppDetailQuotesGetDto) {
+    console.log('item en en enviado al detalle>>>>>>+++++', itemRecibido);
+
     //voy al formulario de edicion
     this.router.navigate(['edit-detalle-cotizacion'], {
-      state: { item, operacion: 1 },
+      state: {
+        item: itemRecibido,
+        operacion: 1,
+        producto: itemRecibido.appProductsGetDto,
+      },
     }); //1 edit
   }
 
@@ -171,7 +183,8 @@ export class ListPage implements OnInit {
     this.router.navigate(['/menu/cotizacion-edit'], { state: {} });
   }
 
-  async presentActionSheet(item) {
+  async presentActionSheet(item: AppDetailQuotesGetDto) {
+    console.log('presentActionSheet', item);
     const actionSheet = this.actionSheetCtrl.create({
       header: 'Acciones...',
       buttons: [
@@ -179,6 +192,7 @@ export class ListPage implements OnInit {
           text: 'Actualizar',
           icon: 'create-outline',
           handler: () => {
+            console.log('Actualizar item ', item);
             this.edit(item);
           },
         },

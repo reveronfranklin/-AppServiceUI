@@ -1,6 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { ActionSheetController, AlertController, ToastController } from '@ionic/angular';
+import {
+  ActionSheetController,
+  AlertController,
+  ToastController,
+} from '@ionic/angular';
 import { AppProdutsQueryFilter } from 'src/app/interfaces/app-produts-query-filter';
 import { IUsuario } from 'src/app/interfaces/iusuario';
 import { AppProductsDeleteDto } from 'src/app/models/app-products-delete-dto';
@@ -14,7 +18,6 @@ import { RecetasListPage } from 'src/app/pages/recetas/recetas-list/recetas-list
   styleUrls: ['./productos-list.page.scss'],
 })
 export class ProductosListPage implements OnInit {
-
   appProdutsQueryFilter: AppProdutsQueryFilter;
   appProductsGetDto: AppProductsGetDto[] = [];
   appProductsDeleteDto: AppProductsDeleteDto = new AppProductsDeleteDto();
@@ -28,18 +31,15 @@ export class ProductosListPage implements OnInit {
     public alertController: AlertController,
     private generalService: GeneralService,
     public toastController: ToastController,
-    private router: Router
+    private router: Router,
   ) {
     this.usuario = this.generalService.GetUsuario();
   }
 
   ngOnInit() {
-
-
-
-    this.productoService.allProducts$.subscribe(allProducts => {
+    this.productoService.allProducts$.subscribe((allProducts) => {
       this.appProductsGetDto = allProducts.data;
-      console.log(this.appProductsGetDto);
+      console.log('en el ngoninit de productos', this.appProductsGetDto);
     });
 
     this.appProdutsQueryFilter = {
@@ -49,39 +49,32 @@ export class ProductosListPage implements OnInit {
       code: '',
       description1: '',
       description2: '',
-      searchText: ''
-
-    }
+      searchText: '',
+    };
 
     this.refresh();
   }
 
-
   onClickAdd() {
-    this.router.navigate(['/menu/productos-edit'], { state: { flag: 0 } })
+    this.router.navigate(['/menu/productos-edit'], { state: { flag: 0 } });
   }
 
   onChangeSearchText(event) {
-
     this.appProdutsQueryFilter.searchText = event.target.value;
     this.refresh();
-
   }
-
 
   refresh() {
     this.showLoading = true;
     //this.productoService.GetAllAppProducts(this.appProdutsQueryFilter);
-    
 
-    this.productoService.GetAll(this.appProdutsQueryFilter).subscribe(result => {
-      console.log('Al refrescar productos*********',result);
-      this.appProductsGetDto=result.data;
-      this.showLoading = false;
-    });
-
-
-
+    this.productoService
+      .GetAllVertical(this.appProdutsQueryFilter)
+      .subscribe((result) => {
+        console.log('Al refrescar productos*********', result);
+        this.appProductsGetDto = result.data;
+        this.showLoading = false;
+      });
   }
 
   async openToast(message, color) {
@@ -89,106 +82,105 @@ export class ProductosListPage implements OnInit {
       message,
       duration: 2500,
       position: 'top',
-      color
-
+      color,
     });
     toast.present();
   }
 
-
   async presentActionSheet(producto) {
-
     const actionSheet = await this.actionSheetController.create({
       header: 'Acción',
       cssClass: 'my-custom-class',
 
-      buttons: [{
-        text: 'Actualizar',
-        role: 'destructive',
-        icon: 'pencil-outline',
-        handler: () => {
-          this.UpdateProduct(producto);
-        }
-      },
-      {
-        text: 'Eliminar',
-        icon: 'trash',
-        handler: () => {
-          this.DeleteProduct(producto);
-        }
-      },
-      {
-        text: 'Copiar',
-        icon: 'albums',
-        handler: () => {
-          this.CopiarProduct(producto);
-        }
-      },
-      {
-        text: 'Recetas',
-        icon: 'receipt-outline',
-        handler: () => {
-          this.RecetaProducto(producto);
-        }
-      },
-      {
-        text: 'Precios',
-        icon: 'cash',
-        handler: () => {
-          this.PreciosProducto(producto);
-        }
-      },
-      {
-        text: 'Cancel',
-        icon: 'close',
-        role: 'cancel',
-        handler: () => {
-          console.log('Cancel clicked');
-        }
-      }]
+      buttons: [
+        {
+          text: 'Actualizar',
+          role: 'destructive',
+          icon: 'pencil-outline',
+          handler: () => {
+            this.UpdateProduct(producto);
+          },
+        },
+        {
+          text: 'Eliminar',
+          icon: 'trash',
+          handler: () => {
+            this.DeleteProduct(producto);
+          },
+        },
+        {
+          text: 'Copiar',
+          icon: 'albums',
+          handler: () => {
+            this.CopiarProduct(producto);
+          },
+        },
+        {
+          text: 'Recetas',
+          icon: 'receipt-outline',
+          handler: () => {
+            this.RecetaProducto(producto);
+          },
+        },
+        {
+          text: 'Precios',
+          icon: 'cash',
+          handler: () => {
+            this.PreciosProducto(producto);
+          },
+        },
+        {
+          text: 'Cancel',
+          icon: 'close',
+          role: 'cancel',
+          handler: () => {
+            console.log('Cancel clicked');
+          },
+        },
+      ],
     });
     await actionSheet.present();
   }
 
   //Receta del producto
   RecetaProducto(producto) {
-
-    this.productoService.product$.next(producto)
+    this.productoService.product$.next(producto);
     let itemProducto = producto;
-    this.router.navigate(['/menu/recetas-list'], { state: { flag: 1, itemProducto } })
-
+    this.router.navigate(['/menu/recetas-list'], {
+      state: { flag: 1, itemProducto },
+    });
   }
 
-  PreciosProducto(producto){
-    this.productoService.product$.next(producto)
+  PreciosProducto(producto) {
+    this.productoService.product$.next(producto);
     let itemProducto = producto;
-    this.router.navigate(['/menu/price-list'], { state: { flag: 1, itemProducto } })
+    this.router.navigate(['/menu/price-list'], {
+      state: { flag: 1, itemProducto },
+    });
   }
 
   //Copiar Receta del producto
   CopiarRecetaProducto(producto) {
+    this.productoService.product$.next(producto);
 
-    this.productoService.product$.next(producto)
-
-    this.router.navigate(['/menu/copy-recetas'], { state: { flag: 1 } })
-
+    this.router.navigate(['/menu/copy-recetas'], { state: { flag: 1 } });
   }
   // Metodo para actualizar un producto
 
   UpdateProduct(producto) {
+    this.productoService.product$.next(producto);
 
-    this.productoService.product$.next(producto)
-
-    this.router.navigate(['/menu/productos-edit'], { state: { flag: 1 } })
-
+    this.router.navigate(['/menu/productos-edit'], { state: { flag: 1 } });
   }
-
 
   //Metodo para Copiar Producto
   async CopiarProduct(Producto) {
-     console.log('producto a copiar',Producto)
+    console.log('producto a copiar', Producto);
     this.appProductsDeleteDto.id = Producto.id;
-    console.log('producto a copiar this.appProductsDeleteDto',this.appProductsDeleteDto)
+    console.log(
+      'producto a copiar this.appProductsDeleteDto',
+      this.appProductsDeleteDto,
+    );
     const alert = await this.alertController.create({
       cssClass: 'my-custom-class',
       header: '',
@@ -201,40 +193,37 @@ export class ProductosListPage implements OnInit {
           cssClass: 'secondary',
           handler: (blah) => {
             console.log('Confirm Cancel: blah');
-          }
-        }, {
+          },
+        },
+        {
           text: 'Confirmar',
           handler: () => {
-           
-            this.productoService.CopyProduct(this.appProductsDeleteDto).subscribe(result => {
-              
-              if (result.meta.isValid === true) {
-                this.appProductsGetDto=result.data;
-                //this.refresh();
-                this.openToast(result.meta.message, 'success');
-                /* setTimeout(() => {
+            this.productoService
+              .CopyProduct(this.appProductsDeleteDto)
+              .subscribe((result) => {
+                if (result.meta.isValid === true) {
+                  this.appProductsGetDto = result.data;
+                  //this.refresh();
+                  this.openToast(result.meta.message, 'success');
+                  /* setTimeout(() => {
                   this.productoService.GetAllAppProducts(this.appProdutsQueryFilter)
-                  
-                }, 500); */
-              } else {
-                this.openToast(result.meta.message, 'danger');
-              }
-            })
 
-          }
-        }
-      ]
+                }, 500); */
+                } else {
+                  this.openToast(result.meta.message, 'danger');
+                }
+              });
+          },
+        },
+      ],
     });
 
     await alert.present();
   }
 
-
   // Metodo para Eliminar un producto
-  
 
   async DeleteProduct(Producto) {
-
     this.appProductsDeleteDto.id = Producto.id;
 
     const alert = await this.alertController.create({
@@ -249,32 +238,32 @@ export class ProductosListPage implements OnInit {
           cssClass: 'secondary',
           handler: (blah) => {
             console.log('Confirm Cancel: blah');
-          }
-        }, {
+          },
+        },
+        {
           text: 'Confirmar',
           handler: () => {
-            this.showLoading=true;
-            this.productoService.DeleteProduct(this.appProductsDeleteDto).subscribe(result => {
-              this.showLoading=false;
-              
-              if (result.meta.isValid === true) {
-                this.openToast(result.meta.message, 'success');
-                this.refresh();
-                /* setTimeout(() => {
+            this.showLoading = true;
+            this.productoService
+              .DeleteProduct(this.appProductsDeleteDto)
+              .subscribe((result) => {
+                this.showLoading = false;
+
+                if (result.meta.isValid === true) {
+                  this.openToast(result.meta.message, 'success');
+                  this.refresh();
+                  /* setTimeout(() => {
                   this.productoService.GetAllAppProducts(this.appProdutsQueryFilter)
                 }, 500); */
-              } else {
-                this.openToast(result.meta.message, 'danger');
-              }
-            })
-
-          }
-        }
-      ]
+                } else {
+                  this.openToast(result.meta.message, 'danger');
+                }
+              });
+          },
+        },
+      ],
     });
 
     await alert.present();
   }
-
-
 }

@@ -1,254 +1,155 @@
 <ion-header>
-  <ion-toolbar color='primary'>
-    <ion-title> {{titulo}} </ion-title>
-
+  <ion-toolbar color="primary">
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
-      <ion-back-button defaultHref="/" text=""></ion-back-button>
-
+      <ion-back-button defaultHref="/menu/cotizaciones-list" text=""></ion-back-button>
     </ion-buttons>
+    <ion-title> {{titulo}} </ion-title>
 
-
-    <!-- <ion-menu-button></ion-menu-button>
-    <button ion-button (click)="goListDetalleCotizacion()">
-      <ion-back-button defaultHref="" text=""></ion-back-button>
-    </button> -->
-
-    <!-- Botonos auxiliares -->
     <ion-buttons slot="end">
-
-      <!-- añadir cotizacion -->
-      <ion-button (click)="ListDetalleCotizacion()">
+      <ion-button (click)="ListDetalleCotizacion()" [disabled]="!habilitarDetallePLus">
         <ion-icon name="cart-outline" size="large"></ion-icon>
-
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 
-  <ion-item>
-    <label>
-      <p class="ion-text-wrap">
-        {{ _cotizacionTitulo }} {{nombreCliente}}
-      </p>
-      <p *ngIf="mensaje !==''">
-        {{mensaje}}
-      </p>
-    </label>
+  <ion-item lines="full">
+    <ion-label class="ion-text-wrap">
+      <h2 style="font-weight: bold; color: var(--ion-color-primary);">
+        {{ _cotizacionTitulo }}
+      </h2>
+      <p>{{nombreCliente}}</p>
+    </ion-label>
   </ion-item>
-  <ion-row>
 
-    <ion-col *ngIf="_guardando">
-      <div class="ion-text-center">
-
-        <h3>Guardando Cotizacion.........</h3>
-
-      </div>
-    </ion-col>
-
-  </ion-row>
+  <ion-progress-bar *ngIf="_guardando" type="indeterminate"></ion-progress-bar>
 </ion-header>
 
 <ion-content>
+  <ion-card mode="ios" *ngIf="form">
+    <form [formGroup]="form" (ngSubmit)="save($event)">
 
-  <ion-card>
-
-    <form [formGroup]="form" novalidate (ngSubmit)="save($event)">
-
-      <!-- Input de cliente -->
+      <ion-list-header>
+        <ion-label>Información del Cliente</ion-label>
+      </ion-list-header>
 
       <ion-item>
-        <label for="codigoCliente" position="floating">Cliente:</label>
-        <ion-input type="text" formControlName="codigoCliente"></ion-input>
-        <ion-button (click)="onBuscarCliente()">
+        <ion-label position="stacked">Código Cliente</ion-label>
+        <ion-input type="text" formControlName="idCliente" readonly></ion-input>
+        <ion-button slot="end" fill="clear" (click)="onBuscarCliente()" [disabled]="!editable">
           <ion-icon name="search-outline"></ion-icon>
         </ion-button>
-      </ion-item>
-
-
-      <!--  Direccion a facturar -->
-
-      <ion-item *ngIf="false">
-        <ion-input type="text" formControlName="idDireccionFacturar"></ion-input>
       </ion-item>
 
       <div *ngIf="flagDirEntrega">
         <app-direccion-cliente></app-direccion-cliente>
-      </div>
 
-      <!--  Direccion de entrega -->
-
-      <ion-item *ngIf="false">
-        <ion-label>DirecciónEntrega</ion-label>
-        <ion-input type="text" formControlName="idDireccionEntrega"></ion-input>
-      </ion-item>
-
-      <div *ngIf="flagDirEntrega">
-        <ion-item>
-          <ion-label>DirecciónEntrega</ion-label>
-          <ion-button (click)="onBuscarIdDireccionEntrega()">
-            <ion-icon name="search-outline"></ion-icon>
+        <ion-item lines="none" class="ion-margin-top">
+          <ion-label>Dirección de Entrega</ion-label>
+          <ion-button slot="end" size="small" (click)="onBuscarIdDireccionEntrega()" [disabled]="!editable">
+            Cambiar
+            <ion-icon name="location-outline" slot="end"></ion-icon>
           </ion-button>
         </ion-item>
-
         <app-direccion-entrega></app-direccion-entrega>
       </div>
 
-      <div *ngIf="!flagDirEntrega">
-        <ion-card>
+      <div *ngIf="!flagDirEntrega" class="ion-padding-horizontal">
+        <ion-item>
+          <ion-label position="stacked">Rif</ion-label>
+          <ion-input type="text" class="uppercase-input" formControlName="rif" placeholder="J-12345678-9"></ion-input>
+        </ion-item>
+        <ion-note color="danger" *ngIf="rifFieldIsInvalid" class="ion-padding-start">
+          Formato de RIF invalido: J-12345678-9
+        </ion-note>
 
+        <ion-item lines="none">
+          <ion-label position="stacked">Razón Social</ion-label>
+          <ion-input type="text" class="uppercase-input" formControlName="razonSocial" maxlength="80"></ion-input>
+        </ion-item>
+        <div class="ion-text-end ion-padding-horizontal">
+          <ion-note [color]="form.get('razonSocial')?.value?.length >= 70 ? 'danger' : 'medium'">
+            <small>{{ form.get('razonSocial')?.value?.length || 0 }} / 80</small>
+          </ion-note>
+        </div>
 
-          <ion-item>
-            <ion-label position="floating">Rif</ion-label>
-            <ion-input type="text" formControlName="rif"></ion-input>
-            <div *ngIf="rifFieldIsInvalid">
-              <ion-text color="danger">
-                Formato de RIF invalido: el primer caracter debe ser J,G,V,E (Mayuscula). Ej: J-12345678-9
-              </ion-text>
+        <ion-item>
+          <ion-label position="stacked">Dirección</ion-label>
+          <ion-textarea formControlName="direccion" rows="2"></ion-textarea>
+        </ion-item>
 
-            </div>
-
-          </ion-item>
-          <ion-item>
-            <ion-label position="floating">Razon Social</ion-label>
-            <ion-input type="text" formControlName="razonSocial"></ion-input>
-
-          </ion-item>
-          <ion-item>
-            <ion-label position="floating">Direccion </ion-label>
-            <ion-input type="text" formControlName="direccion"></ion-input>
-
-          </ion-item>
-
-          <ion-item *ngIf="false">
-            <label for="idMunicipio" position="floating">Municipio:</label>
-            <ion-input type="text" formControlName="idMunicipio"></ion-input>
-            <ion-button (click)="onBuscarMunicipio()">
-              <ion-icon name="search-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-          <ion-item *ngIf="false">
-            <label for="idMunicipio" position="floating">Municipio:</label>
-            <ion-input type="text" formControlName="idMunicipio"></ion-input>
-            <ion-button (click)="onBuscarMunicipio()">
-              <ion-icon name="search-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-          <ion-item>
-
-            <label for="descripcionMunicipio" position="floating">Municipio:</label>
-            <ion-input type="text" formControlName="descripcionMunicipio"></ion-input>
-            <ion-button (click)="onBuscarMunicipio()">
-              <ion-icon name="search-outline"></ion-icon>
-            </ion-button>
-          </ion-item>
-        </ion-card>
+        <ion-item>
+          <ion-label position="stacked">Municipio</ion-label>
+          <ion-input formControlName="descripcionMunicipio" readonly></ion-input>
+          <ion-button slot="end" fill="clear" (click)="onBuscarMunicipio()" [disabled]="!editable">
+            <ion-icon name="map-outline"></ion-icon>
+          </ion-button>
+        </ion-item>
       </div>
 
-      <!-- Input IdContacto -->
-
-      <ion-item *ngIf="false">
-        <label for="idContacto" position="floating">Contacto:</label>
-        <ion-input type="text" formControlName="idContacto"></ion-input>
-        <ion-button (click)="onBuscarContacto()">
-          <ion-icon name="search-outline"></ion-icon>
-        </ion-button>
-
-      </ion-item>
+      <ion-list-header class="ion-margin-top">
+        <ion-label>Condiciones y Contacto</ion-label>
+      </ion-list-header>
 
       <ion-item>
-        <ion-label> Contacto: {{ nombreContacto }} </ion-label>
-
-        <ion-button (click)="onAddContacto()">
-
+        <ion-icon name="person-outline" slot="start"></ion-icon>
+        <ion-label>
+          <p>Contacto Seleccionado</p>
+          <h3>{{ nombreContacto || 'Sin contacto' }}</h3>
+        </ion-label>
+        <ion-button slot="end" fill="outline" size="small" (click)="onAddContacto()" [disabled]="!editable">
           <ion-icon name="person-add-outline"></ion-icon>
         </ion-button>
       </ion-item>
 
-
-      <!-- Combo Moneda -->
-
       <ion-item>
-        <ion-label position="floating">Moneda:</ion-label>
-        <ion-select formControlName="idMoneda" (ionChange)="onChangeMoneda($event)">
+        <ion-label position="stacked">Moneda</ion-label>
+        <ion-select formControlName="idMtrTipoMoneda" (ionChange)="onChangeMoneda($event)" interface="popover">
           <ion-select-option *ngFor="let item of listMtrTipoMonedasDto" [value]="item.id">
             {{item.descripcion}}
           </ion-select-option>
         </ion-select>
       </ion-item>
 
-      <!-- Fijar precios en Bs -->
-      <ion-item *ngIf="form.controls['idMoneda'].value===1">
+      <ion-item *ngIf="form.get('idMtrTipoMoneda')?.value === 1">
         <ion-label>Fijar Precio Bs?</ion-label>
-        <ion-checkbox disabled="true" formControlName="fijarPrecioBs"></ion-checkbox>
+        <ion-checkbox formControlName="fijarPrecioBs"></ion-checkbox>
       </ion-item>
 
-      <!-- Select de condicion de pago -->
-
       <ion-item>
-
-        <ion-label position="stacked">
-          Cond. Pago
-        </ion-label>
-
-        <ion-select formControlName="condicionPago" [(ngModel)]="condicionPagoCodigo"
-          (ionChange)="onChangeCondicionPago($event)">
-
-          <ion-select-option *ngFor="let item of condicionPagoDto" [value]="item.codigo"
-            style="max-width: 100% !important;">
-
+        <ion-label position="stacked">Condición de Pago</ion-label>
+        <ion-select formControlName="idCondPago" interface="popover">
+          <ion-select-option *ngFor="let item of condicionPagoDto" [value]="item.codigo">
             {{item.descripcion}}
-
           </ion-select-option>
-
         </ion-select>
-
       </ion-item>
 
-      <!-- Input Orden de Compra -->
-
       <ion-item>
-        <ion-label for="ordenCompra" position="floating">OrdenDeCompra</ion-label>
+        <ion-label position="stacked">Orden de Compra</ion-label>
         <ion-input type="text" formControlName="ordenCompra"></ion-input>
       </ion-item>
 
-      <!-- Input de Observaciones -->
-
-      <ion-item>
-        <ion-label for="observaciones" position="floating">Observaciones</ion-label>
-        <ion-input type="text" formControlName="observaciones"></ion-input>
+      <ion-item lines="none">
+        <ion-label position="stacked">Observaciones</ion-label>
+        <ion-textarea formControlName="observaciones" rows="3" maxlength="250"
+          placeholder="Máx. 250 caracteres"></ion-textarea>
       </ion-item>
+      <div class="ion-text-end ion-padding-horizontal">
+        <ion-note [color]="form.get('observaciones')?.value?.length >= 225 ? 'danger' : 'medium'">
+          <small>{{ form.get('observaciones')?.value?.length || 0 }} / 250</small>
+        </ion-note>
+      </div>
 
-    </form>
-
-
-    <!-- <p>
-      Form Status: {{ form.value | json }}
-    </p>
-
-    <p>
-      Form Status: {{ form.status }}
-    </p> -->
-    <div *ngIf="editable">
-      <div *ngIf="!_guardando">
-        <ion-button [disabled]="(!form.valid)" *ngIf="flagInsert" (click)="insertCotizacion()">
+      <div class="ion-padding" *ngIf="editable && !_guardando">
+        <ion-button expand="block" [disabled]="!form.valid" *ngIf="flagInsert" (click)="insertCotizacion()">
           Grabar Cotizacion
         </ion-button>
-
-        <ion-button [disabled]="(!form.valid)" *ngIf="flagUpdate" (click)="UpdateCotizacion()">
+        <ion-button expand="block" color="success" [disabled]="!form.valid" *ngIf="flagUpdate"
+          (click)="UpdateCotizacion()">
           Actualizar Cotizacion
         </ion-button>
       </div>
-
-    </div>
-
-
+    </form>
   </ion-card>
-
-  <!-- <ion-fab *ngIf="habilitarDetallePLus" style="z-index: 100;" color="white" vertical="bottom" horizontal="end"
-    slot="fixed">
-    <ion-fab-button (click)="ListDetalleCotizacion()">
-      <ion-icon name="add-outline"></ion-icon>
-    </ion-fab-button>
-  </ion-fab> -->
-
 </ion-content>

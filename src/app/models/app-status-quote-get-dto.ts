@@ -1,18 +1,20 @@
 export class AppStatusQuoteGetDto {
+  id: number;
+  descripcion: string;
 
+  flagModificar: string;
 
-    id: number;
-    descripcion: string;
+  editable: boolean;
 
-    flagModificar: string;
+  flagEnEspera: boolean;
 
-    editable: boolean;
+  puedeGanarPerder: boolean;
 
-    flagEnEspera: boolean;
+  enGrabacion: boolean;
+  claseCss: string;
+}
 
-    puedeGanarPerder: boolean;
-
-    enGrabacion: boolean;
-    claseCss:string;
-
+export class EstatusDto {
+  id: number;
+  descripcion: string;
 }

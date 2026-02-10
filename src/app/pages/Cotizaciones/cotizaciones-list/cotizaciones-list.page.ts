@@ -1,573 +1,400 @@
-/* eslint-disable guard-for-in */
-/* eslint-disable @typescript-eslint/dot-notation */
-/* eslint-disable quote-props */
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { NavigationEnd, Router } from '@angular/router';
 import {
-  IonInfiniteScroll,
-  Platform,
   ActionSheetController,
-  IonItemSliding,
-  ToastController,
-  LoadingController,
-  ModalController,
-  NavController,
   AlertController,
+  NavController,
+  LoadingController,
 } from '@ionic/angular';
-
-import { CotizacionesListService } from '../../../services/cotizaciones/cotizaciones-list.service';
-// import { cotizacionesListDto } from '../../../models/cotizaciones-list-dto';
-import { Router } from '@angular/router';
-import { AppGeneralQuotesQueryFilter } from 'src/app/interfaces/App-General-Quotes-Query-Filter';
-import { AppGeneralQuotesGetDto } from 'src/app/models/app-general-quotes-get-dto';
-import { CondicionPagoQueryFilter } from 'src/app/interfaces/condicion-pago-query-filter';
-import { IUsuario } from 'src/app/interfaces/iusuario';
 import { GeneralService } from 'src/app/services/general.service';
-
-import { Observable } from 'rxjs';
-import { AppStatusQuoteGetDto } from 'src/app/models/app-status-quote-get-dto';
-import { AppGeneralQuotesChangeStatusDto } from 'src/app/models/app-general-quotes-change-status-dto';
-import { AppGeneralQuotesActionSheetDto } from 'src/app/models/app-general-quotes-action-sheet-dto';
-import { TasaPreferencialQueryFilter } from '../../../interfaces/tasa-preferencial-query-filter';
-import { getLocaleDateTimeFormat } from '@angular/common';
-import { TasaPreferencialService } from '../../../services/tasa-preferencial.service';
-import { TPaTasaReferencialGetDto } from '../../../models/t-pa-tasa-referencial-get-dto';
+import { CotizacionesListService } from '../../../services/cotizaciones/cotizaciones-list.service';
+import { AppGeneralQuotesQueryFilter } from 'src/app/interfaces/App-General-Quotes-Query-Filter';
 import { AppGeneralQuotesCopyDto } from '../../../models/app-general-quotes-ccopy-dto';
+import { AppGeneralQuotesChangeStatusDto } from 'src/app/models/app-general-quotes-change-status-dto';
+import { filter } from 'rxjs/operators';
+import { AppGeneralQuotesDeleteDto } from 'src/app/models/app-general-quotes-delete-dto';
 
 @Component({
   selector: 'app-cotizaciones-list',
   templateUrl: './cotizaciones-list.page.html',
   styleUrls: ['./cotizaciones-list.page.scss'],
 })
-export class CotizacionesListPage implements OnInit {
-  //observable
-  //cotizacion$: Observable<AppGeneralQuotesGetDto>;
-  cotizacion$: Observable<any>;
+export class CotizacionesListPage implements OnInit, OnDestroy {
+  appGeneralQuotesGetDtoArray: any[] = [];
   fechaDesde: string;
   fechaHasta: string;
-  appGeneralQuotesCopyDto: AppGeneralQuotesCopyDto;
+  searchText: string = '';
+  statusId: number = 0;
 
-  tasaPreferencialQueryFilter: TasaPreferencialQueryFilter;
-  tPaTasaReferencialGetDto: TPaTasaReferencialGetDto;
+  // Paginación
+  currentPage: number = 1;
+  pageSize: number = 5;
+  totalRecords: number = 0;
+  totalPages: number = 0;
 
-  appGeneralQuotesQueryFilter: AppGeneralQuotesQueryFilter;
-  appGeneralQuotesGetDtoArray: AppGeneralQuotesGetDto[] = [];
-  condicionPagoQueryFilter: CondicionPagoQueryFilter;
-  appStatusQuoteGetDto: AppStatusQuoteGetDto;
-  appGeneralQuotesChangeStatusDto: AppGeneralQuotesChangeStatusDto =
-    new AppGeneralQuotesChangeStatusDto();
-  appGeneralQuotesActionSheetDto: AppGeneralQuotesActionSheetDto;
-  cotizacion: AppGeneralQuotesGetDto;
+  cargando: boolean = false;
+  mensaje: string = '';
+  usuario: any;
+  nombreUsuario: string = '';
+  skeletonCount = [1, 2, 3, 4, 5, 6];
 
-  searchText: string;
-  usuario: IUsuario;
-  nombreUsuario: string;
-  pageSize = 10;
-  page = 0;
-  botones = [];
-  listReg: number[] = [5, 10, 15, 20, 25, 30, 50, 100, 150, 200];
-  public cargando: boolean = false;
+  listReg: number[] = [5, 10, 20, 50, 100];
+  listEstatus: any[] = [
+    { id: 0, descripcion: 'Todos' },
+    { id: 1, descripcion: 'En Grabación' },
+    { id: 2, descripcion: 'En espera por Cliente' },
+    { id: 3, descripcion: 'Postergada' },
+    { id: 5, descripcion: 'Ganada' },
+    { id: 6, descripcion: 'Perdida' },
+  ];
 
-  //@Input('cotParameter') cotParameter: string;
   constructor(
     private router: Router,
     private actionSheetCtrl: ActionSheetController,
-    private navctrl: NavController,
     private gs: GeneralService,
-    private CotizacionesService: CotizacionesListService,
-    private tasaPreferencialService: TasaPreferencialService,
-    public alertController: AlertController
+    private cotizacionesService: CotizacionesListService,
+    private alertController: AlertController,
   ) {}
 
   ngOnInit() {
     const currentDate = new Date();
-
-    // add a day
     currentDate.setDate(currentDate.getDate() - 30);
     this.fechaDesde = currentDate.toISOString();
     this.fechaHasta = new Date().toISOString();
 
-    /*  this.CotizacionesService.allCotizaciones$.subscribe(allData => {
-             this.appGeneralQuotesGetDtoArray = allData;
-
-             console.log('Lista de cotizaciones ng on init cotizaciones list: ', this.appGeneralQuotesGetDtoArray);
-
-         }); */
-  }
-
-  optionsReg($event) {
-    this.pageSize = $event.target.value;
-    this.refresh();
+    this.usuario = this.gs.GetUsuario();
+    if (this.usuario) {
+      this.nombreUsuario = `(${this.usuario.user})`;
+    }
+    if (this.cargando) return;
+    this.loadQuotes();
   }
 
   ionViewDidEnter() {
+    this.loadQuotes();
+  }
+
+  ngOnDestroy() {}
+
+  async loadQuotes() {
+    if (this.cargando) return;
+    this.cargando = true;
+    this.mensaje = '';
+
+    const filter: AppGeneralQuotesQueryFilter = {
+      pageSize: this.pageSize,
+      pageNumber: this.currentPage,
+      usuarioConectado: this.usuario.user,
+      cotizacion: '',
+      searchText: this.searchText,
+      fechaDesde: this.fechaDesde,
+      fechaHasta: this.fechaHasta,
+      statusId: this.statusId,
+    };
+
+    this.cotizacionesService.GetAllGeneralCotizacion(filter).subscribe({
+      next: (res) => {
+        this.appGeneralQuotesGetDtoArray = res.data;
+        this.totalRecords = res.meta.totalCount;
+        this.totalPages = Math.ceil(this.totalRecords / this.pageSize);
+        this.mensaje = res.meta.message;
+        this.cargando = false;
+     
+      },
+      error: (err) => {
+        console.error(err);
+        this.cargando = false;
+        this.gs.presentToast('Error al conectar con el servidor', 'danger');
+      },
+    });
+  }
+
+  // --- Manejo de Eventos ---
+  refresh() {
+    this.currentPage = 1;
     this.appGeneralQuotesGetDtoArray = [];
-    this.cargando = true;
-    this.cotizacion$ = this.CotizacionesService.getCotizacion$();
-    this.cotizacion$.subscribe((cotizacion) => (this.cotizacion = cotizacion));
-
-    const filtro = this.searchText;
-
-    this.usuario = this.gs.GetUsuario();
-
-    this.nombreUsuario = '';
-    if (
-      this.usuario !== null &&
-      this.usuario.nombreUsuario !== null &&
-      this.usuario.nombreUsuario !== 'undefined'
-    ) {
-      this.nombreUsuario =
-        '(' + this.usuario.user + '-' + this.usuario.nombreUsuario + ')';
-    }
-    this.appGeneralQuotesQueryFilter = {
-      pageSize: this.pageSize,
-      pageNumber: this.page,
-      usuarioConectado: this.usuario.user,
-      cotizacion: '',
-      searchText: filtro,
-      fechaDesde: this.fechaDesde,
-      fechaHasta: this.fechaHasta, //this.searchText
-    };
-
-    console.log(
-      'this.appGeneralQuotesQueryFilter en ionViewDidEnter',
-      this.appGeneralQuotesQueryFilter
-    );
-
-    this.CotizacionesService.GetAllGeneralCotizacion(
-      this.appGeneralQuotesQueryFilter
-    ).subscribe((listCotizacionesResult) => {
-      this.CotizacionesService.allCotizaciones$.next(
-        listCotizacionesResult.data
-      );
-      this.appGeneralQuotesGetDtoArray = listCotizacionesResult.data;
-      this.cargando = false;
-      //event.target.complete();
-    });
+    this.loadQuotes();
   }
 
-  refresh(filtro: any = '?') {
+  onPageSizeChange() {
+    this.currentPage = 1;
+    this.loadQuotes();
+  }
+
+  optionsStatus($event: any) {
+    this.statusId = $event.target.value.id;
+    this.refresh();
+  }
+
+  onChangeSearchText(event: any) {
+    // Extraemos el valor directamente del evento para evitar desfases
+    const val = event.target.value;
+
+    // Limpiamos la lista para que el *ngIf="cargando" muestre el skeleton inmediatamente
     this.appGeneralQuotesGetDtoArray = [];
-    this.cargando = true;
-    this.cotizacion$ = this.CotizacionesService.getCotizacion$();
-    this.cotizacion$.subscribe((cotizacion) => (this.cotizacion = cotizacion));
+    this.searchText = val;
+    this.currentPage = 1; // RESET obligatorio al buscar
 
-    if (filtro === '?') {
-      filtro = this.searchText;
+    this.loadQuotes();
+  }
+
+  // --- Paginación ---
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.loadQuotes();
     }
-
-    this.usuario = this.gs.GetUsuario();
-
-    this.appGeneralQuotesQueryFilter = {
-      pageSize: this.pageSize,
-      pageNumber: this.page,
-      usuarioConectado: this.usuario.user,
-      cotizacion: '',
-      searchText: filtro,
-      fechaDesde: this.fechaDesde,
-      fechaHasta: this.fechaHasta, //this.searchText
-    };
-
-    console.log(
-      'this.appGeneralQuotesQueryFilter',
-      this.appGeneralQuotesQueryFilter
-    );
-
-    this.CotizacionesService.GetAllGeneralCotizacion(
-      this.appGeneralQuotesQueryFilter
-    ).subscribe((listCotizacionesResult) => {
-      console.log(
-        'Lista de cotizaciones listCotizacionesResult refresh: ',
-        listCotizacionesResult
-      );
-      this.CotizacionesService.allCotizaciones$.next(
-        listCotizacionesResult.data
-      );
-      this.appGeneralQuotesGetDtoArray = listCotizacionesResult.data;
-      this.cargando = false;
-      //event.target.complete();
-    });
+  }
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.loadQuotes();
+    }
+  }
+  goToPage(p: number) {
+    this.currentPage = p;
+    this.loadQuotes();
   }
 
-  refreshCotizacion(cotizacion: string) {
-    this.cargando = true;
-    this.cotizacion$ = this.CotizacionesService.getCotizacion$();
-    this.cotizacion$.subscribe((cotizacion) => (this.cotizacion = cotizacion));
-
-    this.usuario = this.gs.GetUsuario();
-
-    this.appGeneralQuotesQueryFilter = {
-      pageSize: this.pageSize,
-      pageNumber: this.page,
-      usuarioConectado: this.usuario.user,
-      cotizacion: '',
-      searchText: cotizacion,
-      fechaDesde: this.fechaDesde,
-      fechaHasta: this.fechaHasta, //this.searchText
+  // --- Visualización de Iconos ---
+  getIconByStatus(clase: string) {
+    const icons = {
+      enGrabacion: 'pencil-outline',
+      enEspera: 'time-outline',
+      ganada: 'checkmark-circle-outline',
+      perdida: 'close-circle-outline',
+      postergada: 'pause-circle-outline',
     };
-    console.log(
-      'this.appGeneralQuotesQueryFilter',
-      this.appGeneralQuotesQueryFilter
-    );
-
-    this.CotizacionesService.GetAllGeneralCotizacion(
-      this.appGeneralQuotesQueryFilter
-    ).subscribe((listCotizacionesResult) => {
-      this.CotizacionesService.allCotizaciones$.next(
-        listCotizacionesResult.data
-      );
-      this.cargando = false;
-      //event.target.complete();
-    });
+    return icons[clase] || 'document-text-outline';
   }
 
-  // Añadir o Agregar cotizacion
+  getIconColor(clase: string) {
+    const colors = {
+      enGrabacion: 'primary',
+      enEspera: 'warning',
+      ganada: 'success',
+      perdida: 'danger',
+      postergada: 'medium',
+    };
+    return colors[clase] || 'medium';
+  }
+
+  // --- Action Sheet ---
+  async presentActionSheet(item: any) {
+    const actionSheetDto = item.appGeneralQuotesActionSheetDto;
+    const opcionesMenu = [];
+
+    const acciones = [
+      {
+        text: 'Actualizar o Ver',
+        icon: 'create-outline',
+        show: true,
+        handler: () => this.actualizarCotizacion(item),
+      },
+      {
+        text: 'Enviar al Cliente',
+        icon: 'send-outline',
+        show: actionSheetDto.enviarAlCliente,
+        handler: () => this.enviarAlCliente(item),
+      },
+      {
+        text: 'Ganar-Perder',
+        icon: 'git-compare-outline',
+        show: actionSheetDto.ganarPerder,
+        handler: () => this.GanarPerderCotiza(item),
+      },
+      {
+        text: 'Retornar Grabación',
+        icon: 'refresh-outline',
+        show: actionSheetDto.retornarAGrabacion,
+        handler: () => this.presentAlertRetornarAGrabacion(item),
+      },
+      {
+        text: 'Postergar',
+        icon: 'calendar-clear-outline',
+        show: actionSheetDto.postergar,
+        handler: () => this.postergarCotiza(item),
+      },
+      {
+        text: 'Imprimir',
+        icon: 'print-outline',
+        show: actionSheetDto.imprimir,
+        handler: () => this.imprimirCotiza(item),
+      },
+      {
+        text: 'Copiar',
+        icon: 'copy-outline',
+        show: true,
+        handler: () => this.presentAlertCopiar(item),
+      },
+      {
+        text: 'Eliminar',
+        icon: 'trash-outline',
+        show: actionSheetDto.eliminar,
+        role: 'destructive',
+        //handler: () => this.eliminarCotiza(item),
+        handler: () => this.presentAlertDelete(item),
+      },
+    ];
+
+    acciones.forEach((acc) => {
+      if (acc.show) {
+        opcionesMenu.push({
+          text: acc.text,
+          icon: acc.icon,
+          role: acc.role || '',
+          handler: acc.handler,
+        });
+      }
+    });
+
+    opcionesMenu.push({ text: 'Cancelar', icon: 'close', role: 'cancel' });
+
+    const actionSheet = await this.actionSheetCtrl.create({
+      header: `Acciones: ${item.cotizacion}`,
+      buttons: opcionesMenu,
+    });
+    await actionSheet.present();
+  }
+
+  // --- MÉTODOS DE ACCIÓN ---
+
   onClickAdd() {
     this.router.navigate(['/menu/cotizacion-edit'], {
       state: { operacion: 0 },
     });
   }
 
-  // actualizar cotizacion llamando a cotizacion-edit
-  actualizarCotizacion(cotizacion: AppGeneralQuotesGetDto) {
-    this.CotizacionesService.cotizacion$.next(cotizacion);
-    this.router.navigate(['/menu/cotizacion-edit'], { state: { flag: true } });
+  actualizarCotizacion(cotizacion: any) {
+    this.cotizacionesService.cotizacion$.next(cotizacion);
+    this.router.navigate(['/menu/cotizacion-edit'], {
+      state: { flag: true, itemCliente: cotizacion.mtrClienteDto },
+    });
   }
 
-  GanarPerderCotiza(cotizacion) {
-    console.log('cotuzacion enviada a ganar', cotizacion);
-    this.CotizacionesService.cotizacion$.next(cotizacion);
+  GanarPerderCotiza(cotizacion: any) {
+    this.cotizacionesService.cotizacion$.next(cotizacion);
     this.router.navigate(['/cotizacion-ganar-perder'], {
       state: { cotizacion },
     });
   }
 
-  RetornarAGrabacion(cotizacion) {
-    this.cargando = true;
-    this.appGeneralQuotesCopyDto = {
-      id: cotizacion.id,
-      usuarioActualiza: this.usuario.user,
-    };
-
-    this.CotizacionesService.RetornarAGrabacion(
-      this.appGeneralQuotesCopyDto
-    ).subscribe((result) => {
-      this.cargando = false;
-      this.refresh();
-
-      //event.target.complete();
-    });
-
-    console.log('Cotizacion a copiar', cotizacion);
-
-    //this.CotizacionesService.cotizacion$.next(cotizacion);
-    //this.router.navigate(['/cotizacion-delete'], { state: { cotizacion } })
+  postergarCotiza(cotizacion: any) {
+    this.cotizacionesService.cotizacion$.next(cotizacion);
+    this.router.navigate(['/cotizacion-postergar'], { state: {} });
   }
 
-  async presentAlertRetornarAGrabacion(cotizacion) {
-    const alert = await this.alertController.create({
-      cssClass: 'my-custom-class',
-      header: '',
-      subHeader: '',
-      message: 'Esta usted seguro de retornar a grabacion esta Cotizacion?',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'Cancelar',
-          cssClass: 'secondary',
-        },
-        {
-          text: 'Confirmar',
-          role: 'Confirmar',
-          cssClass: 'secondary',
-          handler: (blah) => {
-            //console.log(cotizacion)
-            this.RetornarAGrabacion(cotizacion);
-          },
-        },
-      ],
-    });
-
-    await alert.present();
-  }
-
-  async presentAlertCopiar(cotizacion) {
-    const alert = await this.alertController.create({
-      cssClass: 'my-custom-class',
-      header: '',
-      subHeader: '',
-      message: 'Esta usted seguro de copiar esta Cotizacion?',
-      buttons: [
-        {
-          text: 'Cancelar',
-          role: 'Cancelar',
-          cssClass: 'secondary',
-        },
-        {
-          text: 'Confirmar',
-          role: 'Confirmar',
-          cssClass: 'secondary',
-          handler: (blah) => {
-            //console.log(cotizacion)
-            this.copiarCotizacion(cotizacion);
-          },
-        },
-      ],
-    });
-
-    await alert.present();
-  }
-  eliminarCotiza(cotizacion) {
-    this.CotizacionesService.cotizacion$.next(cotizacion);
+  eliminarCotiza(cotizacion: any) {
+    console.log('Eliminar', cotizacion);
+    this.cotizacionesService.cotizacion$.next(cotizacion);
     this.router.navigate(['/cotizacion-delete'], { state: { cotizacion } });
   }
 
-  copiarCotizacion(cotizacion) {
-    this.appGeneralQuotesCopyDto = {
-      id: cotizacion.id,
-      usuarioActualiza: this.usuario.user,
-    };
-
-    this.CotizacionesService.CopiarCotizacion(
-      this.appGeneralQuotesCopyDto
-    ).subscribe((result) => {
-      //event.target.complete();
-      this.refresh();
-    });
-
-    console.log('Cotizacion a copiar', cotizacion);
-
-    //this.CotizacionesService.cotizacion$.next(cotizacion);
-    //this.router.navigate(['/cotizacion-delete'], { state: { cotizacion } })
-  }
-
-  postergarCotiza(cotizacion) {
-    this.CotizacionesService.cotizacion$.next(cotizacion);
-    this.router.navigate(['/cotizacion-postergar'], { state: {} });
-    //this.router.navigate(['/cotizacion-postergar'], { state: { cotizacion } })
-  }
-
-  imprimirCotiza(cotizacion) {
-    this.CotizacionesService.cotizacion$.next(cotizacion);
+  imprimirCotiza(cotizacion: any) {
+    this.cotizacionesService.cotizacion$.next(cotizacion);
     this.router.navigate(['/menu/imprimir-cotizacion'], {
       state: { cotizacion },
     });
-    //this.router.navigate(['/cotizacion-postergar'], { state: { cotizacion } })
   }
 
-  async enviarAlCliente(cotizacion: AppGeneralQuotesGetDto) {
+  async enviarAlCliente(cotizacion: any) {
     const alert = await this.alertController.create({
-      message: 'Enviar al cliente',
+      header: 'Confirmar',
+      message: '¿Desea enviar esta cotización al cliente?',
       buttons: [
-        {
-          text: 'No',
-          role: 'cancel',
-          cssClass: 'secondary',
-          handler: (blah) => {
-            console.log('Confirm Cancel: blah');
-          },
-        },
+        { text: 'No', role: 'cancel' },
         {
           text: 'Si',
           handler: () => {
             this.cargando = true;
-            console.log(
-              ' Enviar al cliente this.appGeneralQuotesChangeStatusDto',
-              this.appGeneralQuotesChangeStatusDto
-            );
-            this.appGeneralQuotesChangeStatusDto.id = cotizacion.id;
-            this.CotizacionesService.EnviarAlCliente(
-              this.appGeneralQuotesChangeStatusDto
-            ).subscribe((result) => {
-              this.refresh();
+            const dto: AppGeneralQuotesChangeStatusDto = { id: cotizacion.id };
+            this.cotizacionesService
+              .EnviarAlCliente(dto)
+              .subscribe((result) => {
+                this.cargando = false;
+                if (result.meta.isValid) {
+                  this.gs.presentToast(result.meta.message, 'success');
+                  this.refresh();
+                } else {
+                  this.gs.presentToast(result.meta.message, 'danger');
+                }
+              });
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
 
+  async presentAlertCopiar(cotizacion: any) {
+    const alert = await this.alertController.create({
+      message: '¿Está seguro de copiar esta Cotización?',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Confirmar',
+          handler: () => {
+            const dto: AppGeneralQuotesCopyDto = {
+              id: cotizacion.id,
+              usuarioActualiza: this.usuario.user,
+            };
+            this.cotizacionesService
+              .CopiarCotizacion(dto)
+              .subscribe(() => this.refresh());
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  async presentAlertRetornarAGrabacion(cotizacion: any) {
+    const alert = await this.alertController.create({
+      message: '¿Desea retornar a grabación esta Cotización?',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Confirmar',
+          handler: () => {
+            this.cargando = true;
+            const dto: AppGeneralQuotesCopyDto = {
+              id: cotizacion.id,
+              usuarioActualiza: this.usuario.user,
+            };
+            this.cotizacionesService.RetornarAGrabacion(dto).subscribe(() => {
               this.cargando = false;
-              if (result.meta.isValid === true) {
-                //this.refreshCotizacion(cotizacion.cotizacion);
-                this.refresh();
-                this.gs.presentToast(result.meta.message, 'success');
-              } else {
-                this.gs.presentToast(result.meta.message, 'danger');
-              }
+              this.refresh();
             });
           },
         },
       ],
     });
-
     await alert.present();
   }
-  async enviarAprobacionPrecio(cotizacion: AppGeneralQuotesGetDto) {
+
+  async presentAlertDelete(cotizacion: any) {
     const alert = await this.alertController.create({
-      message: 'Enviar Aprobacion Precio',
+      message: '¿Desea Eliminar esta Cotización?',
       buttons: [
+        { text: 'Cancelar', role: 'cancel' },
         {
-          text: 'No',
-          role: 'cancel',
-          cssClass: 'secondary',
-          handler: (blah) => {
-            console.log('Confirm Cancel: blah');
-          },
-        },
-        {
-          text: 'Si',
+          text: 'Confirmar',
           handler: () => {
-            console.log('envial aprobacion precios>>>', cotizacion);
+            this.cargando = true;
+            const dto: AppGeneralQuotesDeleteDto = {
+              id: cotizacion.id,
+              cotizacion: cotizacion.cotizacion,
+            };
+            this.cotizacionesService
+              .DeleteGeneralCotizacion(dto)
+              .subscribe(() => {
+                this.cargando = false;
+                this.refresh();
+              });
           },
         },
       ],
     });
-
     await alert.present();
-  }
-  //TODO este metodo no va
-  goDetalleCotiza(cotizacion) {
-    this.CotizacionesService.cotizacion$.next(cotizacion);
-    this.router.navigate(['/list-detalle-cotizacion'], {
-      state: { cotizacion },
-    });
-  }
-
-  //buscar cotizaciones (filtrar)
-  onChangeSearchText(event) {
-    this.refresh(event.target.value);
-  }
-
-  public async presentActionSheet(item: AppGeneralQuotesGetDto) {
-    this.appStatusQuoteGetDto = item.appStatusQuoteGetDto;
-
-    const numeroItemsCotizacion = item.appDetailQuotesGetDto.length;
-
-    const opcionesMenu = [];
-
-    this.appGeneralQuotesActionSheetDto = item.appGeneralQuotesActionSheetDto;
-
-    const dict = {
-      actualizar: {
-        text: ' Actualizar o Ver',
-        icon: 'create-outline',
-        handler: () => {
-          this.actualizarCotizacion(item);
-        },
-      },
-      enviarAprobacionPrecio: {
-        text: ' Enviar Aprobacion Precio',
-        icon: 'send',
-        handler: () => {
-          this.enviarAprobacionPrecio(item);
-        },
-      },
-      enviarAlCliente: {
-        text: ' Enviar al Cliente',
-        icon: 'send',
-        handler: () => {
-          this.enviarAlCliente(item);
-        },
-      },
-      ganarPerder: {
-        text: ' Ganar-Perder',
-        icon: 'git-compare',
-        handler: () => {
-          this.GanarPerderCotiza(item);
-        },
-      },
-      retornarAGrabacion: {
-        text: ' Retornar Grabacion',
-        icon: 'git-compare',
-        handler: () => {
-          this.RetornarAGrabacion(item);
-        },
-      },
-      postergar: {
-        text: ' Postergar',
-        icon: 'send-outline',
-        handler: () => {
-          this.postergarCotiza(item);
-        },
-      },
-      imprimir: {
-        text: 'Imprimir',
-        icon: 'print-outline',
-        handler: () => {
-          this.imprimirCotiza(item);
-        },
-      },
-      copiar: {
-        text: ' Copiar',
-        icon: 'copy-outline',
-        handler: () => {
-          this.presentAlertCopiar(item);
-        },
-      },
-      eliminar: {
-        text: ' Eliminar',
-        icon: 'trash',
-        handler: () => {
-          this.eliminarCotiza(item);
-        },
-      },
-      cancel: {
-        text: 'Cancel',
-        role: 'cancel',
-      },
-    };
-
-    //Condicionales para el menu del ActionSheet//
-
-    //Si no puede enviar al cliente
-    if (!this.appGeneralQuotesActionSheetDto.enviarAlCliente) {
-      delete dict['enviarAlCliente'];
-    }
-    //Si no puede enviar Aprobacion Precio
-    if (!this.appGeneralQuotesActionSheetDto.enviarAprobacionPrecio) {
-      delete dict['enviarAprobacionPrecio'];
-    }
-    //Si no puede ganar-perder
-    if (!this.appGeneralQuotesActionSheetDto.ganarPerder) {
-      delete dict['ganarPerder'];
-    }
-
-    //Si no puede postergar
-    if (!this.appGeneralQuotesActionSheetDto.postergar) {
-      delete dict['postergar'];
-    }
-
-    //Si no puede eliminar
-    if (!this.appGeneralQuotesActionSheetDto.eliminar) {
-      delete dict['eliminar'];
-    }
-
-    //Si no puede cancel
-    if (!this.appGeneralQuotesActionSheetDto.cancel) {
-      delete dict['cancel'];
-    }
-
-    //Si no puede imprimir
-    if (!this.appGeneralQuotesActionSheetDto.imprimir) {
-      delete dict['imprimir'];
-    }
-
-    //Si no puede retornar a grabacion
-    if (!this.appGeneralQuotesActionSheetDto.retornarAGrabacion) {
-      delete dict['retornarAGrabacion'];
-    }
-
-    //
-
-    //opcionesMenu = opciones del actionsheet
-
-    for (const key in dict) {
-      const value = dict[key];
-
-      opcionesMenu.push(value);
-    }
-
-    //Presento el ActionSheet Menu solo con las opciones permitidas
-
-    const actionSheet = this.actionSheetCtrl.create({
-      header: 'Acciones',
-      buttons: opcionesMenu,
-    });
-
-    (await actionSheet).present();
   }
 }

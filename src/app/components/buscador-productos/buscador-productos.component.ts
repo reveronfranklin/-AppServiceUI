@@ -19,7 +19,7 @@ export class BuscadorProductosComponent implements OnInit {
   constructor(
     private modalCtrl: ModalController,
     private router: Router,
-    private productoService: ProductoService
+    private productoService: ProductoService,
   ) {}
 
   ngOnInit() {
@@ -45,14 +45,14 @@ export class BuscadorProductosComponent implements OnInit {
     };
     console.log(
       'filter a buscar productos General',
-      this.appProdutsQueryFilter
+      this.appProdutsQueryFilter,
     );
 
-    this.productoService.GetAllAppProducts(this.appProdutsQueryFilter);
+    this.productoService.GetAllAppProductsVertical(this.appProdutsQueryFilter);
   }
 
   refresh() {
-    this.productoService.GetAllAppProducts(this.appProdutsQueryFilter);
+    this.productoService.GetAllAppProductsVertical(this.appProdutsQueryFilter);
   }
 
   onChangeSearchText(event) {

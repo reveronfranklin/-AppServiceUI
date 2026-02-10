@@ -40,7 +40,6 @@ import { ConfiguracionService } from 'src/app/services/configuracion.service';
   styleUrls: ['./main.page.scss'],
 })
 export class MainPage implements OnInit {
-
   usuario: IUsuario;
 
   listMtrTipoMonedasDto: MtrTipoMonedaDto[] = [];
@@ -65,16 +64,15 @@ export class MainPage implements OnInit {
   pageMenuQueryFilter: PageMenuQueryFilter;
   role: number;
 
-
-
   genericFilter: GenericFilter;
   listTratamientoDto: SapTratamientoContactoGetDto[] = [];
   listSapCargoContacto: SapCargoContactoGetDto[] = [];
   listsapPoderContactoGetDto: SapPoderContactoGetDto[] = [];
   listSapDepartamentoContacto: SapDepartamentoContactoGetDto[] = [];
-  urlMoneda= '../../../assets/moneda.json';
-  urlOficinas= '../../../assets/oficinas.json';
-  constructor(private gs: GeneralService,
+  urlMoneda = '../../../assets/moneda.json';
+  urlOficinas = '../../../assets/oficinas.json';
+  constructor(
+    private gs: GeneralService,
     private cobTipoTransaccionService: CobTipoTransaccionService,
     private mtrBancosService: MtrBancosService,
     private mtrTipoMonedaService: MtrTipoMonedaService,
@@ -86,9 +84,8 @@ export class MainPage implements OnInit {
     public loginService: LoginService,
     private clienteService: ClienteService,
     private productoService: ProductoService,
-    private configuracionService: ConfiguracionService) {
-
-
+    private configuracionService: ConfiguracionService
+  ) {
     this.usuario = this.gs.GetUsuario();
   }
 
@@ -100,79 +97,75 @@ export class MainPage implements OnInit {
     }
     await this.cargarCombos();
     //ParametrosMaquinas
-    this.configuracionService.getParametrosMaquina().subscribe(resp => {
-
+    this.configuracionService.getParametrosMaquina().subscribe((resp) => {
       localStorage.setItem('parametrosMaquinas', JSON.stringify(resp));
-
     });
-
-
-
   }
-  async ionViewDidEnter(){
-
-
+  async ionViewDidEnter() {
     console.log('ionViewDidEnter inicia cargar combo');
-     await  this.cargarCombos();
+    await this.cargarCombos();
     console.log('ionViewDidEnter fin cargar combo');
-}
+  }
 
-
-  async  cargarCombos() {
-
-    console.log('Inicio cargar combos',Date.now());
-
-
+  async cargarCombos() {
+    console.log('Inicio cargar combos', Date.now());
 
     //Busco subcategorias
-    const data =
-    {
+    const data = {
       Id: 0,
-      Description: ''
+      Description: '',
     };
-    this.productoService.SubCategoryGetAll(data).subscribe(result => {
-
+    this.productoService.SubCategoryGetAll(data).subscribe((result) => {
       localStorage.setItem('listSubcategoria', JSON.stringify(result.data));
     });
 
     //Oficinas
 
-
-    fetch(this.urlOficinas).then(res => res.json())
-    .then(json => {
-      this.mtrOficinaDto = json;
-      localStorage.setItem('listOficinas', JSON.stringify(this.mtrOficinaDto));
-    });
-
+    fetch(this.urlOficinas)
+      .then((res) => res.json())
+      .then((json) => {
+        this.mtrOficinaDto = json;
+        localStorage.setItem(
+          'listOficinas',
+          JSON.stringify(this.mtrOficinaDto)
+        );
+      });
 
     //Vendedores
 
     this.mtrVendedorQueryFilter = {
       usuario: this.usuario.user,
-      oficina: 0
+      oficina: 0,
     };
-    this.mtrVendedorService.ListVendedoresPorUsuario(this.mtrVendedorQueryFilter).subscribe(resp => {
-      this.mtrVendedoresDto = resp.data;
-
-      localStorage.setItem('listVendedores', JSON.stringify(this.mtrVendedoresDto));
-    });
-
-
-
+    this.mtrVendedorService
+      .ListVendedoresPorUsuario(this.mtrVendedorQueryFilter)
+      .subscribe((resp) => {
+        this.mtrVendedoresDto = resp.data;
+        console.log(
+          'Lista de Vendedores en cargarCombos',
+          this.mtrVendedoresDto
+        );
+        localStorage.setItem(
+          'listVendedores',
+          JSON.stringify(this.mtrVendedoresDto)
+        );
+      });
 
     //Moneda
 
     this.mtrTipoMonedaQueryFilter = {
       id: 0,
-      descripcion: ''
+      descripcion: '',
     };
-    fetch(this.urlMoneda).then(res => res.json())
-    .then(json => {
-      this.listMtrTipoMonedasDto = json;
-      localStorage.setItem('listMoneda', JSON.stringify(this.listMtrTipoMonedasDto));
-    });
-
-
+    fetch(this.urlMoneda)
+      .then((res) => res.json())
+      .then((json) => {
+        this.listMtrTipoMonedasDto = json;
+        localStorage.setItem(
+          'listMoneda',
+          JSON.stringify(this.listMtrTipoMonedasDto)
+        );
+      });
 
     /*this.MtrTipoMonedaService.ListMonedas(this.mtrTipoMonedaQueryFilter).subscribe(respMoneda => {
       this.listMtrTipoMonedasDto = respMoneda.data;
@@ -180,20 +173,22 @@ export class MainPage implements OnInit {
       localStorage.setItem('listMoneda', JSON.stringify(this.listMtrTipoMonedasDto));
     });*/
 
-
-
     //Tipo de Transaccion
 
     this.cobTipoTransaccionQueryFilter = {
       searchText: '',
     };
 
-    this.cobTipoTransaccionService.ListCobTipoTransaccion(this.cobTipoTransaccionQueryFilter).subscribe(respTipo => {
-      this.listCobTipoTransaccionDto = respTipo.data;
-      localStorage.setItem('listCobTipoTransaccion', '');
-      localStorage.setItem('listCobTipoTransaccion', JSON.stringify(this.listCobTipoTransaccionDto));
-    });
-
+    this.cobTipoTransaccionService
+      .ListCobTipoTransaccion(this.cobTipoTransaccionQueryFilter)
+      .subscribe((respTipo) => {
+        this.listCobTipoTransaccionDto = respTipo.data;
+        localStorage.setItem('listCobTipoTransaccion', '');
+        localStorage.setItem(
+          'listCobTipoTransaccion',
+          JSON.stringify(this.listCobTipoTransaccionDto)
+        );
+      });
 
     //Banco
 
@@ -203,125 +198,136 @@ export class MainPage implements OnInit {
       idTipoTransaccion: '',
     };
 
-    this.mtrBancosService.ListBancos(this.mtrBancosQueryFilter).subscribe(resp => {
-      this.listMtrBancosDto = resp.data;
-      localStorage.setItem('listMtrBanco', '');
-      localStorage.setItem('listMtrBanco', JSON.stringify(this.listMtrBancosDto));
-    });
-
+    this.mtrBancosService
+      .ListBancos(this.mtrBancosQueryFilter)
+      .subscribe((resp) => {
+        this.listMtrBancosDto = resp.data;
+        localStorage.setItem('listMtrBanco', '');
+        localStorage.setItem(
+          'listMtrBanco',
+          JSON.stringify(this.listMtrBancosDto)
+        );
+      });
 
     //Cob Transaccion
 
     this.cobTransaccionesQueryFilter = {
       efectivo: true,
-      idTransacccionCobranzas: 0
+      idTransacccionCobranzas: 0,
     };
 
-    this.cobTransaccionesService.listCobTransaccionesEfectivo(this.cobTransaccionesQueryFilter).subscribe(resp => {
-      this.listCobTransaccionesDto = resp.data;
-      localStorage.setItem('listCobTransacciones', JSON.stringify(this.listCobTransaccionesDto));
-    });
-
+    this.cobTransaccionesService
+      .listCobTransaccionesEfectivo(this.cobTransaccionesQueryFilter)
+      .subscribe((resp) => {
+        this.listCobTransaccionesDto = resp.data;
+        localStorage.setItem(
+          'listCobTransacciones',
+          JSON.stringify(this.listCobTransaccionesDto)
+        );
+      });
 
     //Cob Transacciones Impuesto
 
     this.cobTransaccionesQueryFilter = {
       efectivo: false,
-      idTransacccionCobranzas: 0
+      idTransacccionCobranzas: 0,
     };
 
-    this.cobTransaccionesService.listCobTransaccionesRetenciones(this.cobTransaccionesQueryFilter).subscribe(resp => {
-      this.listCobTransaccionesImpuestoDto = resp.data;
-      localStorage.setItem('listCobTransaccionesRetencion', JSON.stringify(this.listCobTransaccionesImpuestoDto));
-    });
-
-
-
+    this.cobTransaccionesService
+      .listCobTransaccionesRetenciones(this.cobTransaccionesQueryFilter)
+      .subscribe((resp) => {
+        this.listCobTransaccionesImpuestoDto = resp.data;
+        localStorage.setItem(
+          'listCobTransaccionesRetencion',
+          JSON.stringify(this.listCobTransaccionesImpuestoDto)
+        );
+      });
 
     //Tipo Documento adjunto
-
 
     this.ofdTipoDocumentoQueryFilter = {
       idGrupoTipoDocumento: 2,
       nombreDocumento: '',
       idTipoDocumento: 0,
-
     };
 
-    this.ofdTipoDocumentoServiceService.listTipoDocumento(this.ofdTipoDocumentoQueryFilter).subscribe(resp => {
-      this.listOfdTipoDocumentoDto = resp.data;
-      localStorage.setItem('listTipoDocumento', JSON.stringify(this.listOfdTipoDocumentoDto));
-    });
-
+    this.ofdTipoDocumentoServiceService
+      .listTipoDocumento(this.ofdTipoDocumentoQueryFilter)
+      .subscribe((resp) => {
+        this.listOfdTipoDocumentoDto = resp.data;
+        localStorage.setItem(
+          'listTipoDocumento',
+          JSON.stringify(this.listOfdTipoDocumentoDto)
+        );
+      });
 
     //MAestro de Contactos
     this.genericFilter = {
-
       pageNumber: 1,
       pageSize: 20,
-
-
     };
 
-    this.clienteService.GetAllSapTratamientoContacto(this.genericFilter).subscribe(respTratamiento => {
+    this.clienteService
+      .GetAllSapTratamientoContacto(this.genericFilter)
+      .subscribe(
+        (respTratamiento) => {
+          this.listTratamientoDto = respTratamiento;
+          localStorage.setItem(
+            'listTratamientoDto',
+            JSON.stringify(this.listTratamientoDto)
+          );
+        },
+        (error) => {
+          console.log('en el error list tratamiento: ', error);
+        }
+      );
 
+    this.clienteService
+      .ListGetAllSapCargoContacto(this.genericFilter)
+      .subscribe(
+        (respCargoContacto) => {
+          this.listSapCargoContacto = respCargoContacto;
+          localStorage.setItem(
+            'listSapCargoContacto',
+            JSON.stringify(this.listSapCargoContacto)
+          );
+        },
+        (error) => {
+          console.log('en el error list cargo: ', error);
+        }
+      );
 
-      this.listTratamientoDto = respTratamiento;
-      localStorage.setItem('listTratamientoDto', JSON.stringify(this.listTratamientoDto));
+    this.clienteService
+      .GetAllSapDepartamentoContacto(this.genericFilter)
+      .subscribe(
+        (respDepartamentoContacto) => {
+          this.listSapDepartamentoContacto = respDepartamentoContacto;
+          localStorage.setItem(
+            'listSapDepartamentoContacto',
+            JSON.stringify(this.listSapDepartamentoContacto)
+          );
+        },
+        (error) => {
+          console.log('en el error list departamento: ', error);
+        }
+      );
 
+    this.clienteService
+      .ListGetAllSapPoderContacto(this.genericFilter)
+      .subscribe(
+        (respPoderContacto) => {
+          this.listsapPoderContactoGetDto = respPoderContacto;
+          localStorage.setItem(
+            'listsapPoderContactoGetDto',
+            JSON.stringify(this.listsapPoderContactoGetDto)
+          );
+        },
+        (error) => {
+          console.log('en el error list departamento: ', error);
+        }
+      );
 
-    },
-      error => {
-
-
-        console.log('en el error list tratamiento: ', error);
-      });
-
-
-    this.clienteService.ListGetAllSapCargoContacto(this.genericFilter).subscribe(respCargoContacto => {
-
-
-      this.listSapCargoContacto = respCargoContacto;
-      localStorage.setItem('listSapCargoContacto', JSON.stringify(this.listSapCargoContacto));
-
-    },
-      error => {
-
-
-        console.log('en el error list cargo: ', error);
-      });
-
-    this.clienteService.GetAllSapDepartamentoContacto(this.genericFilter).subscribe(respDepartamentoContacto => {
-
-
-      this.listSapDepartamentoContacto = respDepartamentoContacto;
-      localStorage.setItem('listSapDepartamentoContacto', JSON.stringify(this.listSapDepartamentoContacto));
-
-
-    },
-      error => {
-
-
-        console.log('en el error list departamento: ', error);
-      });
-
-
-    this.clienteService.ListGetAllSapPoderContacto(this.genericFilter).subscribe(respPoderContacto => {
-
-      this.listsapPoderContactoGetDto = respPoderContacto;
-      localStorage.setItem('listsapPoderContactoGetDto', JSON.stringify(this.listsapPoderContactoGetDto));
-
-    },
-      error => {
-
-
-        console.log('en el error list departamento: ', error);
-      });
-
-
-
-      console.log('Fin Cargar combos',Date.now());
-
+    console.log('Fin Cargar combos', Date.now());
   }
 
   // eslint-disable-next-line @typescript-eslint/member-ordering

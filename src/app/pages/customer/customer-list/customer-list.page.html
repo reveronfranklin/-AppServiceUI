@@ -59,20 +59,22 @@
         <ion-card (click)="presentActionSheet(item)" [class]="item.claseCss">
           <ion-card-header color="light">
             <ion-item color="light" lines="none">
-              <p> <b> Cliente: </b> {{ item.codigo }} {{ item.nombreCliente}}  </p>
+              <p> <b> Cliente: </b> {{ item.codigo }} {{ item.nombreCliente}} </p>
             </ion-item>
 
           </ion-card-header>
 
           <ion-card-content class="ion-margin-top">
-            <p > <b> Id: </b> {{item.id}} </p>
-            <p > <b> Sector: </b> {{item.descripcionSector}} </p>
-            <p > <b> Ramo: </b> {{item.descripcionRamo}} </p>
-            <p > <b> Estatus: </b> {{item.status}} </p>
-            <p > <b> Direccion: </b> {{item.direccion}} </p>
-            <p > {{item.direccion1}} </p>
+            <p> <b> Id: </b> {{item.id}} </p>
+            <p> <b> Sector: </b> {{item.descripcionSector}} </p>
+            <p> <b> Ramo: </b> {{item.descripcionRamo}} </p>
+            <p> <b> Estatus: </b> {{item.status}} </p>
+            <p> <b> Direccion: </b> {{item.direccion}} </p>
+            <p> {{item.direccion1}} </p>
             <p> <b> Rif Cli: </b> {{ item.rifCliente }} </p>
             <p> <b> Rif Dir: </b> {{ item.rifDireccion }} </p>
+            <p> <b> Vendedor: </b> {{ item.nombreVendedor }} </p>
+            <p> <b>Oficina: </b> {{ item.nombreOficina}} </p>
 
           </ion-card-content>
         </ion-card>

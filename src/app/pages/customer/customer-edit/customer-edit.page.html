@@ -6,7 +6,7 @@
 
   <ion-item>
     <label>
-      <p  class="ion-text-wrap">
+      <p class="ion-text-wrap">
         {{ codigo }} {{rif}} {{nombreCliente}}
       </p>
       <p *ngIf="mensaje !==''">
@@ -41,17 +41,17 @@
           </ion-select-option>
         </ion-select>
       </ion-item>
-      <ion-item >
+      <ion-item>
         <label for="sector" position="floating">Sector:</label>
         <ion-input type="text" formControlName="descripcionSector"></ion-input>
-        <ion-button (click)="onBuscarSector()" >
+        <ion-button (click)="onBuscarSector()">
           <ion-icon name="search-outline"></ion-icon>
         </ion-button>
       </ion-item>
-      <ion-item >
+      <ion-item>
         <label for="sector" position="floating">Ramo:</label>
         <ion-input type="text" formControlName="descripcionRamo"></ion-input>
-        <ion-button (click)="onBuscarRamo()" >
+        <ion-button (click)="onBuscarRamo()">
           <ion-icon name="search-outline"></ion-icon>
         </ion-button>
       </ion-item>
@@ -59,7 +59,7 @@
 
         <label for="descripcionMunicipio" position="floating">Municipio:</label>
         <ion-input type="text" formControlName="descripcionMunicipio"></ion-input>
-        <ion-button (click)="onBuscarMunicipio()" >
+        <ion-button (click)="onBuscarMunicipio()">
           <ion-icon name="search-outline"></ion-icon>
         </ion-button>
       </ion-item>
@@ -74,18 +74,18 @@
         </div>
 
       </ion-item>
-      <ion-item >
+      <ion-item>
         <ion-label position="floating">Direccion:</ion-label>
         <ion-input type="text" formControlName="direccion"></ion-input>
       </ion-item>
-      <ion-item >
+      <ion-item>
         <ion-input type="text" formControlName="direccion1"></ion-input>
       </ion-item>
 
-      <ion-item >
+      <ion-item>
         <ion-input type="text" formControlName="direccion2"></ion-input>
       </ion-item>
-      <ion-item >
+      <ion-item>
         <ion-label position="floating">Punto Referencia:</ion-label>
         <ion-input type="text" formControlName="puntoReferencia"></ion-input>
       </ion-item>
@@ -99,7 +99,7 @@
 
 
     <div>
-      <div *ngIf="!guardando">
+      <div *ngIf="!guardando && this.itemCustomer.editable">
         <ion-button (click)="update()">
           Guardar
         </ion-button>

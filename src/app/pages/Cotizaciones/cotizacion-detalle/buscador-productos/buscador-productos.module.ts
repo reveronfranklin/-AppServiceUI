@@ -1,4 +1,4 @@
-import { NgModule } from '@angular/core';
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -13,8 +13,9 @@ import { BuscadorProductosPage } from './buscador-productos.page';
     CommonModule,
     FormsModule,
     IonicModule,
-    BuscadorProductosPageRoutingModule
+    BuscadorProductosPageRoutingModule,
   ],
-  declarations: [BuscadorProductosPage]
+
+  declarations: [BuscadorProductosPage],
 })
 export class BuscadorProductosPageModule {}

@@ -9,6 +9,7 @@ import { Oficina } from '../models/mtr-oficina-dto';
 })
 export class GeneralService {
   basePath: string;
+  basePathVertical: string;
   basePathHub: string;
 
   // objeto usuario de tipo IUsuario
@@ -17,7 +18,7 @@ export class GeneralService {
   constructor(
     public toastCtrl: ToastController,
     public mathService: MathService,
-    public alertCtrl: AlertController
+    public alertCtrl: AlertController,
   ) {
     //development mode
 
@@ -25,10 +26,24 @@ export class GeneralService {
     //this.basePathHub = 'https://localhost:5001/';
 
     //para produccion
-    const usuario = this.GetUsuario();
+    this.basePathVertical =
+      'https://mooreapps.com.ve/AppServiceBackVertical/api/';
+    this.basePath = 'https://mooreapps.com.ve/AppServiceBackDV/api/';
+    this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackDV/';
 
-    this.basePath = 'https://mooreapps.com.ve/AppServiceBack/api/';
-    this.basePathHub = 'https://mooreapps.com.ve/AppServiceBack/';
+    //Pruebas
+    //this.basePath = 'https://mooreapps.com.ve/AppServiceBackDev/api/';
+    //this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackDev/';
+    //console.log('general service', this.basePath);
+
+    //const usuario = this.GetUsuario();
+
+    //const vendedor = this.getVendedor(usuario.user);
+
+    //if (vendedor && vendedor.oficina == 1) {
+    //  this.basePath = 'https://mooreapps.com.ve/AppServiceBack/api/';
+    // this.basePathHub = 'https://mooreapps.com.ve/AppServiceBack/';
+    //}
 
     //this.basePath = 'http://172.28.107.18/AppServiceBack/api/';
     //this.basePathHub = 'http://172.28.107.18/AppServiceBack/';
@@ -41,6 +56,55 @@ export class GeneralService {
     //http://172.28.107.18:8087/AppServiceUi/menu/main
   }
 
+  getBasePath(): string {
+    //produccion
+    this.basePath = 'https://mooreapps.com.ve/AppServiceBack/api/';
+    this.basePathHub = 'https://mooreapps.com.ve/AppServiceBack/';
+    this.basePathVertical =
+      'https://mooreapps.com.ve/AppServiceBackVertical/api/';
+
+    //Pruebas
+    //this.basePath = 'https://mooreapps.com.ve/AppServiceBackDev/api/';
+    //this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackDev/';
+
+    const usuario = this.GetUsuario();
+
+    const vendedor = this.getVendedor(usuario.user);
+    console.log('usuario en getBasePath', usuario);
+    console.log('vendedor en getBasePath *******', vendedor);
+    let oficina = 1;
+
+    if (vendedor) {
+      oficina = vendedor.oficina;
+    }
+    if (vendedor && oficina == 1) {
+      this.basePath = 'https://mooreapps.com.ve/AppServiceBackCcs/api/';
+      this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackCcs/';
+    }
+    if (vendedor && oficina == 2) {
+      this.basePath = 'https://mooreapps.com.ve/AppServiceBackMcy/api/';
+      this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackMcy/';
+    }
+    if (vendedor && oficina == 3) {
+      this.basePath = 'https://mooreapps.com.ve/AppServiceBackVal/api/';
+      this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackVal/';
+    }
+    if (vendedor && oficina == 4) {
+      this.basePath = 'https://mooreapps.com.ve/AppServiceBackBqto/api/';
+      this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackBqto/';
+    }
+    if (this.compareIgnoreCase(usuario.user, 'LN01')) {
+      this.basePath = 'https://mooreapps.com.ve/AppServiceBackLN01/api/';
+      this.basePathHub = 'https://mooreapps.com.ve/AppServiceBackLN01/';
+    }
+
+    console.log('basePath', this.basePath);
+    return this.basePath;
+  }
+
+  compareIgnoreCase(str1, str2) {
+    return str1.toUpperCase() === str2.toUpperCase();
+  }
   // Establace valores individualmente en localstorage
   SetItem(clave: string, valor: any): void {
     localStorage.setItem(clave, valor);
@@ -81,6 +145,23 @@ export class GeneralService {
     };
   }
 
+  obtenerDatosVendedores() {
+    try {
+      const datos = localStorage.getItem('listVendedores');
+      return datos ? JSON.parse(datos) : [];
+    } catch (error) {
+      console.error('Error al recuperar datos:', error);
+      return [];
+    }
+  }
+  getVendedor(codigo: string): any {
+    const datos = this.obtenerDatosVendedores();
+    console.log('lista de vendedores en getvendedores', datos);
+    return datos.find(
+      (item: any) => item.codigo.toUpperCase() === codigo.toUpperCase(),
+    );
+  }
+
   // Devuelve objeto usuario con datos de localstorage
   GetUsuario(): IUsuario {
     //this.ResetUsuario();
@@ -107,7 +188,18 @@ export class GeneralService {
   async presentToast(message: string, color?: string) {
     const toast = await this.toastCtrl.create({
       message,
-      duration: 2000,
+      duration: 3000,
+      position: 'middle',
+      color,
+    });
+
+    toast.present();
+  }
+
+  async presentToastLong(message: string, color?: string) {
+    const toast = await this.toastCtrl.create({
+      message,
+      duration: 6000,
       position: 'middle',
       color,
     });
@@ -120,7 +212,7 @@ export class GeneralService {
     header: any,
     message: any,
     cancelText: any,
-    okText: any
+    okText: any,
   ): Promise<any> {
     return new Promise(async (resolve) => {
       const alert = await this.alertCtrl.create({

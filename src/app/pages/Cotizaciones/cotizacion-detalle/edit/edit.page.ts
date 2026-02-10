@@ -15,7 +15,6 @@ import { AppDetailQuotesCreateDto } from '../../../../models/app-detail-quotes-c
 import { AppDetailQuotesUpdateDto } from '../../../../models/app-detail-quotes-update-dto';
 
 import { BuscadorUnidadesPage } from '../buscador-unidades/buscador-unidades.page';
-import { BuscadorProductosPage } from '../buscador-productos/buscador-productos.page';
 
 import { Observable, Subject } from 'rxjs';
 import { TasaPreferencialService } from '../../../../services/tasa-preferencial.service';
@@ -44,6 +43,8 @@ import { AppProductConversionFilter } from 'src/app/interfaces/app-product-conve
 import { CondicionesPagoService } from 'src/app/services/condiciones-pago.service';
 import { CondicionPagoQueryFilter } from 'src/app/interfaces/condicion-pago-query-filter';
 import { CondicionPagoDto } from 'src/app/models/CondicionPagoDto';
+import { PrecioDto } from 'src/app/interfaces/precio';
+import { BuscadorProductosPage } from '../buscador-productos/buscador-productos.page';
 
 @Component({
   selector: 'app-edit',
@@ -65,6 +66,7 @@ export class EditPage implements OnInit {
   tituloUi: any;
 
   public isBs: boolean;
+  public porDebajoDeCantidadMinima: boolean;
   public isDolar: boolean;
   public btnUmDisabled: boolean;
   public btnCalculadoraDisabled: boolean;
@@ -109,9 +111,9 @@ export class EditPage implements OnInit {
   public uiIdUnidad: any;
   public uiUsuarioConectado: any;
   public uiUnitPriceConverted: any;
-  public unitPriceBaseProduction: any;
-  public flete: any;
-  public precioMasFlete: any;
+  public unitPriceBaseProduction: number;
+  public flete: number;
+  public newPrecioMasFlete: number;
   public uiTasa: any;
   public uiImageLink: string;
   public uiNombreProductoInCard: string;
@@ -178,15 +180,20 @@ export class EditPage implements OnInit {
     private cotizacionesService: CotizacionesListService,
     private productoService: ProductoService,
     private condicionesPago: CondicionesPagoService,
-    private configuracionService: ConfiguracionService
+    private configuracionService: ConfiguracionService,
   ) {
     this.parametrosMaquinas = JSON.parse(
-      localStorage.getItem('parametrosMaquinas')
+      localStorage.getItem('parametrosMaquinas'),
     );
     this.buildForm();
   }
 
   async ngOnInit() {
+    //suscribe al observable cotizacion$
+    this.cotizacionesListService.cotizacion$.subscribe((cot) => {
+      this.cotizacion = cot;
+    });
+    console.log('editPage ngOnInit', this.cotizacion);
     this.salidas = ['A', 'B', 'C', 'D'];
     this.tipoForma = ['Regular', 'Irregular'];
     this.mostrarEnDesarrollo = true;
@@ -206,7 +213,7 @@ export class EditPage implements OnInit {
     this.uiTasa = 0;
     this.unitPriceBaseProduction = 0;
     this.flete = 0;
-    this.precioMasFlete = 0;
+    this.newPrecioMasFlete = 0;
     //this.calculoId=0;
     this.variables.permitirLectura = false;
     this.btnCalculadoraDisabled = true;
@@ -222,16 +229,11 @@ export class EditPage implements OnInit {
 
     const subcategoryAll = JSON.parse(localStorage.getItem('listSubcategoria'));
     const categorySorted = subcategoryAll.sort((a, b) =>
-      a.description < b.description ? -1 : 1
+      a.description < b.description ? -1 : 1,
     );
     this.appSubcategoryGetDto = categorySorted.filter((x) => x.active === true);
 
     this.requiereDatosEntrada = false;
-
-    //suscribe al observable cotizacion$
-    this.cotizacionesListService.cotizacion$.subscribe((cot) => {
-      this.cotizacion = cot;
-    });
 
     if (this.cotizacion) {
       this.editable = this.cotizacion.appStatusQuoteGetDto.editable;
@@ -255,12 +257,22 @@ export class EditPage implements OnInit {
       };
     }
 
-    //boton calculadora
+    //boton calculadora`
     if (this.operacion === 1) {
       //Modo Editar
       this.item = this.router.getCurrentNavigation().extras.state.item;
-      console.log('item', this.item);
-      this.appProduct = this.item.appProductsGetDto;
+      console.log(
+        'producto recibido',
+        this.router.getCurrentNavigation().extras.state.producto,
+      );
+      this.item.appProductsGetDto =
+        this.router.getCurrentNavigation().extras.state.producto;
+
+      this.appProduct =
+        this.router.getCurrentNavigation().extras.state.producto;
+      this.item.appProductsGetDto = this.appProduct;
+      console.log(this.item.appProductsGetDto);
+      //this.appProduct = this.item.appProductsGetDto;
       this.calculoId = this.item.calculoId;
       this.setColorToolbar();
     }
@@ -277,22 +289,31 @@ export class EditPage implements OnInit {
       this.uiTasa = this.tasa;
     });
 
+    this.showData();
+    this.setMostrarOrdenAnterior();
+
     this.configuraCreateOrEdit();
   }
 
   ionViewDidEnter() {
-    this.cotizacionesListService.cotizacion$.subscribe((dat) => {
+    /*this.cotizacionesListService.cotizacion$.subscribe((dat) => {
       this.cotizacion = dat;
-
+      console.log('this.cotizacion', this.cotizacion);
       this.showData();
       this.setMostrarOrdenAnterior();
+    });*/
+    this.cotizacionesListService.cotizacion$.subscribe((cot) => {
+      this.cotizacion = cot;
     });
+    console.log('cotizacion en ionViewDidEnter', this.cotizacion);
+    this.showData();
+    this.setMostrarOrdenAnterior();
   }
   onChangeCondicionPago(event) {
     //this.generalCotizacion.idCondPago = event.target.value;
     console.log('onChangeCondicionPago', event);
     this.condicionPagoDto = this.listCondicionPagoDto.find(
-      (x) => x.codigo === this.condicionPagoCodigo
+      (x) => x.codigo === this.condicionPagoCodigo,
     );
     this.condicionPagoCodigo = event.target.value;
 
@@ -300,7 +321,7 @@ export class EditPage implements OnInit {
     this.subjectKeyUp.next('onChangeCondicionPago');
     console.log(
       'this.condicionPagoCodigo seleccionada',
-      this.condicionPagoCodigo
+      this.condicionPagoCodigo,
     );
   }
   setMostrarOrdenAnterior() {
@@ -354,15 +375,17 @@ export class EditPage implements OnInit {
     this.unitPriceBaseProduction = 0;
     this.uiTasa = 0;
     this.flete = 0;
-    this.precioMasFlete = 0;
+    this.newPrecioMasFlete = 0;
 
-    if (this.cotizacion.idMtrTipoMoneda === 1) {
+    /*if (this.cotizacion.idMtrTipoMoneda === 1) {
       this.isBs = true;
     }
 
     if (this.cotizacion.idMtrTipoMoneda === 2) {
       this.isDolar = true;
-    }
+    }*/
+    this.isDolar = true;
+    this.isBs = false;
 
     if (this.operacion === 0) {
       //Modo Crear, se habilita al graba
@@ -440,8 +463,7 @@ export class EditPage implements OnInit {
         this.flete =
           (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
       }
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMasFlete = +this.precioMasFlete.toFixed(2);
+      console.log('asignando precioMasFletet en operacion=1');
       this.decripcionProductionUnit =
         this.item.appProductsGetDto.productionUnitGetDto.description1;
       this.descripcionSalesUnit = this.item.appUnitsGetDto.description1;
@@ -546,7 +568,8 @@ export class EditPage implements OnInit {
       ],
       unidad: ['', [Validators.required, Validators.minLength(2)]],
       cantidad: [0, [Validators.required, Validators.min(0.00000000001)]],
-      precio: [0, [Validators.required, Validators.min(0.00000000001)]],
+      //precio: [0, [Validators.required, Validators.min(0.00000000001)]],
+      precio: [0, []],
       total: ['', [Validators.required]],
       precioUsd: [0, [Validators.required, Validators.min(0.00000000001)]],
       totalUsd: ['', [Validators.required]],
@@ -564,11 +587,37 @@ export class EditPage implements OnInit {
       forma: ['', []],
       salida: ['', []],
       presentacion: ['', [Validators.maxLength(200)]],
+      mensajeSolicitarPrecio: ['', []],
+      estimada: [false, []],
     });
   }
 
   showData() {
+    console.log('this.item en showData', this.cotizacion);
+    console.log('item en showData', this.item);
+    console.log('this.operacion en showData', this.operacion);
+
+    var precioDto: PrecioDto = {
+      unitPriceBaseProduction: this.unitPriceBaseProduction,
+      precioMasFlete: 0,
+      calculoId: 0,
+      flete: this.flete,
+      porcFlete: this.cotizacion.porcFlete,
+      precioMaximo: 0,
+      precioMaximoMasFlete: 0,
+      porDebajoDeCantidadMinima: false,
+    };
+    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
     if (this.operacion === 1) {
+      this.form.get('estimada').setValue(this.item.estimada);
+      console.log('this.item en this.operacion === 1', this.item);
+      if (this.item.mensajeSolicitarPrecio) {
+        this.form
+          .get('mensajeSolicitarPrecio')
+          .setValue(this.item.mensajeSolicitarPrecio);
+      }
+
       this.condicionPagoCodigo = this.cotizacion.idCondPago;
       this.condicionPagoDto = this.cotizacion.condicionPagoDto;
       this.form.get('condicionPago').setValue(this.cotizacion.idCondPago);
@@ -613,6 +662,7 @@ export class EditPage implements OnInit {
       this.form.get('obsSolicitud').setValue(this.item.obsSolicitud);
       this.variables.permitirLectura = true;
       this.unitPriceBaseProduction = this.item.unitPriceBaseProduction;
+      this.flete = this.item.flete;
       this.calculoId = this.item.calculoId;
       if (this.item.forma == null) {
         this.item.forma = '';
@@ -645,24 +695,24 @@ export class EditPage implements OnInit {
           .get('subCategoriaId')
           .setValue(
             this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .appSubCategoryId
+              .appSubCategoryId,
           );
         this.form
           .get('producto')
           .setValue(
             this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .code
+              .code,
           );
         this.form
           .get('descripcionProducto')
           .setValue(
             this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .description1
+              .description1,
           );
         this.form
           .get('nombreComercialProducto')
           .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.nombreForma
+            this.cotizacion.appOrdenProductoRepeticionGetDto.nombreForma,
           );
         this.form
           .get('forma')
@@ -673,7 +723,7 @@ export class EditPage implements OnInit {
         this.form
           .get('presentacion')
           .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.presentacion
+            this.cotizacion.appOrdenProductoRepeticionGetDto.presentacion,
           );
 
         //Propiedades
@@ -697,7 +747,7 @@ export class EditPage implements OnInit {
         this.form
           .get('unidad')
           .setValue(
-            this.appProductConversionGetDto.appUnitsAlternativaDescription
+            this.appProductConversionGetDto.appUnitsAlternativaDescription,
           );
         this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
 
@@ -708,12 +758,12 @@ export class EditPage implements OnInit {
           this.form
             .get('medidaBasica')
             .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm
+              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm,
             );
           this.form
             .get('medidaOpuesta')
             .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm
+              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm,
             );
         }
 
@@ -724,18 +774,18 @@ export class EditPage implements OnInit {
           this.form
             .get('medidaBasica')
             .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm
+              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm,
             );
           this.form
             .get('medidaOpuesta')
             .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm
+              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm,
             );
         }
         this.form
           .get('cantidadSolicitada')
           .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.cantidadOrdenada
+            this.cotizacion.appOrdenProductoRepeticionGetDto.cantidadOrdenada,
           );
 
         this.descripcionSalesUnit =
@@ -749,14 +799,22 @@ export class EditPage implements OnInit {
       this.flete =
         (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
     }
-    this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-    this.precioMasFlete = +this.precioMasFlete.toFixed(2);
-
-    //this.onRecalcular('showData');
+    if (!this.item?.appStatusQuoteGetDto?.flagModificar) {
+      this.unitPriceBaseProduction = this.item?.unitPriceBaseProduction ?? 0; // Valor por defecto (0 o el que necesites)
+      this.flete = this.item?.flete ?? 0; // Valor por defecto (0 o el que necesites)
+    }
+    console.log('AppStatusQuoteGetDto', this.item.appStatusQuoteGetDto);
+    /*if (!this.item.appStatusQuoteGetDto.flagModificar) {
+      this.unitPriceBaseProduction = this.item.unitPriceBaseProduction;
+      this.flete = this.item.flete;
+    }*/
+    //this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
+    //this.precioMasFlete = +this.precioMasFlete.toFixed(2);
   }
 
   //Insert - ok
   onInsert(eliminarSolicitud: boolean) {
+    this.setPrecioMasFlete();
     this.detailCreateDto.appGeneralQuotesId = this.cotizacion.id;
     this.detailCreateDto.cotizacion = this.cotizacion.cotizacion;
     this.detailCreateDto.condicionPago = this.condicionPagoCodigo;
@@ -765,7 +823,7 @@ export class EditPage implements OnInit {
     this.detailCreateDto.idEstatus = 1;
     this.detailCreateDto.producto = this.form.get('producto').value;
     this.detailCreateDto.nombreComercialProducto = this.form.get(
-      'nombreComercialProducto'
+      'nombreComercialProducto',
     ).value;
     this.detailCreateDto.diasEntrega = this.form.get('diasEntrega').value;
     this.detailCreateDto.observaciones = this.form.get('observaciones').value;
@@ -823,7 +881,17 @@ export class EditPage implements OnInit {
 
         if (result.meta.isValid === true) {
           this.showLoading = false;
-          this.generalService.presentToast(result.meta.message, 'success');
+
+          if (this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0) {
+            this.generalService.presentToastLong(
+              'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
+                this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
+              'danger',
+            );
+          } else {
+            this.generalService.presentToast(result.meta.message, 'success');
+          }
+
           this.goListDetalleCotizacion();
         } else {
           this.showLoading = false;
@@ -834,8 +902,10 @@ export class EditPage implements OnInit {
   }
 
   //ok!
-  onUpdate(eliminarSolicitud: boolean) {
+  onUpdateFr(eliminarSolicitud: boolean) {
     //let objetoDetailForUpdate: AppDetailQuotesUpdateDto = new AppDetailQuotesUpdateDto()
+
+    this.setPrecioMasFlete();
 
     //establece cantidad, precio y total con datos de la UI
     this.detailUpdateDto.eliminarSolicitud = eliminarSolicitud;
@@ -847,6 +917,7 @@ export class EditPage implements OnInit {
     this.detailUpdateDto.total = this.form.get('total').value;
     this.detailUpdateDto.precioUsd = this.form.get('precioUsd').value;
     this.detailUpdateDto.totalUsd = this.form.get('totalUsd').value;
+
     this.detailUpdateDto.precioLista = this.unitPriceBaseProduction;
 
     this.detailUpdateDto.solicitarPrecio = this.solicitarPrecio;
@@ -864,7 +935,7 @@ export class EditPage implements OnInit {
     this.detailUpdateDto.producto = this.item.producto;
     this.detailUpdateDto.idProducto = this.uiIdProducto;
     this.detailUpdateDto.nombreComercialProducto = this.form.get(
-      'nombreComercialProducto'
+      'nombreComercialProducto',
     ).value;
 
     this.detailUpdateDto.idUnidad = this.uiIdUnidad;
@@ -895,6 +966,7 @@ export class EditPage implements OnInit {
 
     this.showLoading = true;
     this.mensaje = 'Guardando Cotizacion';
+    console.log('detailUpdateDto', this.detailUpdateDto);
 
     this.cotizacionesListService
       .UpdateDetalleCotizacion(this.detailUpdateDto)
@@ -904,18 +976,173 @@ export class EditPage implements OnInit {
           this.appGeneralQuotesGetDto = result.data[0];
 
           this.cotizacionesListService.cotizacion$.next(
-            this.appGeneralQuotesGetDto
+            this.appGeneralQuotesGetDto,
           );
           this.showLoading = false;
           this.mensaje = '';
+          console.log('result', result);
+          if (this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0) {
+            this.generalService.presentToastLong(
+              'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
+                this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
+              'danger',
+            );
+          } else {
+            this.generalService.presentToast(result.meta.message, 'success');
+          }
           //mensaje operacin exitosa
-          this.generalService.presentToast(result.meta.message, 'success');
+
           this.goListDetalleCotizacion();
         } else {
           //mensaje operacion fallida
           this.showLoading = false;
           this.generalService.presentToast(result.meta.message, 'danger');
         }
+      });
+  }
+
+  onUpdate(eliminarSolicitud: boolean) {
+    // 1. Control de errores para la lógica de asignación de datos del formulario
+    try {
+      //let objetoDetailForUpdate: AppDetailQuotesUpdateDto = new AppDetailQuotesUpdateDto()
+
+      // Asignación de datos y cálculos preliminares
+      this.setPrecioMasFlete();
+
+      // Establece cantidad, precio y total con datos de la UI
+      this.detailUpdateDto.eliminarSolicitud = eliminarSolicitud;
+      this.detailUpdateDto.cantidad = this.form.get('cantidad').value;
+      this.detailUpdateDto.condicionPago = this.condicionPagoCodigo;
+      this.detailUpdateDto.cantidadSolicitada =
+        this.form.get('cantidadSolicitada').value;
+      this.detailUpdateDto.precio = this.form.get('precio').value;
+      this.detailUpdateDto.total = this.form.get('total').value;
+      this.detailUpdateDto.precioUsd = this.form.get('precioUsd').value;
+      this.detailUpdateDto.totalUsd = this.form.get('totalUsd').value;
+
+      this.detailUpdateDto.precioLista = this.unitPriceBaseProduction;
+
+      this.detailUpdateDto.solicitarPrecio = this.solicitarPrecio;
+      this.detailUpdateDto.obsSolicitud = this.form.get('obsSolicitud').value;
+      if (this.appProduct.requiereEstimacion === true) {
+        this.detailUpdateDto.obsSolicitud =
+          '***SOLICITUD DE ESTIMACION****' +
+          this.form.get('obsSolicitud').value;
+      }
+
+      // Complementos del DTO
+      this.detailUpdateDto.appGeneralQuotesId = this.cotizacion.id;
+      this.detailUpdateDto.cotizacion = this.cotizacion.cotizacion;
+      this.detailUpdateDto.id = this.item.id;
+      this.detailUpdateDto.idEstatus = this.cotizacion.idEstatus;
+
+      this.detailUpdateDto.producto = this.item.producto;
+      this.detailUpdateDto.idProducto = this.uiIdProducto;
+      this.detailUpdateDto.nombreComercialProducto = this.form.get(
+        'nombreComercialProducto',
+      ).value;
+
+      this.detailUpdateDto.idUnidad = this.uiIdUnidad;
+
+      this.detailUpdateDto.observaciones = this.form.get('observaciones').value;
+      this.detailUpdateDto.diasEntrega = this.form.get('diasEntrega').value;
+
+      this.detailUpdateDto.usuarioConectado =
+        this.generalService.GetUsuario().user;
+
+      if (!this.requiereDatosEntrada) {
+        this.form.get('medidaBasica').setValue(0);
+        this.form.get('medidaOpuesta').setValue(0);
+      }
+
+      this.detailUpdateDto.medidaBasica = this.form.get('medidaBasica').value;
+      this.detailUpdateDto.medidaOpuesta = this.form.get('medidaOpuesta').value;
+
+      this.detailUpdateDto.valorConvertido = this.form.get('cantidad').value;
+      this.detailUpdateDto.cantidadPorUnidadProduccion =
+        this.cantidadPorUnidadProduccion;
+      this.detailUpdateDto.ordenAnterior = this.form.get('ordenAnterior').value;
+      this.detailUpdateDto.calculoId = this.calculoId;
+      this.detailUpdateDto.unitPriceBaseProductionMaximo = this.precioMaximo;
+      this.detailUpdateDto.forma = this.form.get('forma').value;
+      this.detailUpdateDto.salida = this.form.get('salida').value;
+      this.detailUpdateDto.presentacion = this.form.get('presentacion').value;
+
+      this.showLoading = true;
+      this.mensaje = 'Guardando Cotizacion';
+      console.log('detailUpdateDto', this.detailUpdateDto);
+    } catch (error) {
+      // Manejo de errores en la asignación de datos (p. ej., si this.form.get('algo') falla)
+      console.error(
+        'Error al preparar los datos para la actualización:',
+        error,
+      );
+      this.showLoading = false;
+      this.mensaje = 'Error interno al procesar los datos.';
+      this.generalService.presentToast(
+        'Error interno: Falló la preparación de datos.',
+        'danger',
+      );
+      return; // Detener la ejecución si falla la preparación de datos
+    }
+
+    // 2. Control de errores para la llamada al servicio
+    this.cotizacionesListService
+      .UpdateDetalleCotizacion(this.detailUpdateDto)
+      .subscribe({
+        next: (result) => {
+          if (result.meta.isValid) {
+            // Recibo cotización actualizada desde la api
+            this.appGeneralQuotesGetDto = result.data[0];
+
+            this.cotizacionesListService.cotizacion$.next(
+              this.appGeneralQuotesGetDto,
+            );
+            this.showLoading = false;
+            this.mensaje = '';
+            console.log('result', result);
+
+            // Mensaje de éxito con manejo especial para la solicitud de precio
+            if (
+              this.appGeneralQuotesGetDto.mensajeSolicitarPrecio &&
+              this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0
+            ) {
+              this.generalService.presentToastLong(
+                'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
+                  this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
+                'danger', // Usar 'danger' o un color de alerta para destacar la necesidad de aprobación
+              );
+            } else {
+              this.generalService.presentToast(result.meta.message, 'success');
+            }
+
+            this.goListDetalleCotizacion();
+          } else {
+            // Mensaje operación fallida (errores de validación o negocio de la API)
+            this.showLoading = false;
+            this.generalService.presentToast(result.meta.message, 'danger');
+          }
+        },
+        error: (err) => {
+          // Manejo de errores de red o del servidor (HTTP/conexión)
+          console.error(
+            'Error en la llamada al servicio UpdateDetalleCotizacion:',
+            err,
+          );
+          this.showLoading = false;
+          this.mensaje = '';
+          // Proporcionar un mensaje de error más genérico si el error del servidor no es amigable
+          let errorMessage =
+            'Error al actualizar el detalle de la cotización. Intente de nuevo.';
+          if (err && err.message) {
+            errorMessage = `Error de conexión/servidor: ${err.message}`;
+          }
+          this.generalService.presentToast(errorMessage, 'danger');
+        },
+        complete: () => {
+          // Opcional: Lógica a ejecutar cuando el observable se completa
+          console.log('Actualización de detalle de cotización completada.');
+        },
       });
   }
 
@@ -932,7 +1159,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Indique Medida Basica y Medida Opuesta',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -943,7 +1170,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Indique Medida Basica y Medida Opuesta',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -953,7 +1180,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Indique observacion de Solictud de precios y presione enviar solicitud',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -964,7 +1191,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Debe indicar la salida de la Etiqueta',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -975,7 +1202,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Debe indicar la  Forma de la Etiqueta (Regular,Irregular)',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -986,7 +1213,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Debe indicar la Presentacion de la Etiqueta(Minimo 5 Digitos)',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -997,7 +1224,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Precio es menor a el precio Aprobado',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -1008,7 +1235,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Indique observacion de Solictud de precios y presione enviar solicitud',
-        'danger'
+        'danger',
       );
       return;
     }
@@ -1037,7 +1264,7 @@ export class EditPage implements OnInit {
     ) {
       this.generalService.presentToast(
         'Indique observacion de Solictud de precios y presione enviar solicitud',
-        'danger'
+        'danger',
       );
       return;
     } else {
@@ -1079,17 +1306,194 @@ export class EditPage implements OnInit {
     this.router.navigate(['/menu/list-detalle-cotizacion'], {});
   }
 
+  setRequiereAprobacioPrecioCantidad() {
+    this.requiereAprobacionPrecio = false;
+    this.colorToolbar = 'primary';
+    this.solicitarPrecio = false;
+    this.mensajeBotonSolicitarPrecio = '';
+    if (this.appProduct && this.operacion !== 1) {
+      if (
+        this.newPrecioMasFlete > this.variables.precioUsd ||
+        this.appProduct.requiereEstimacion === true ||
+        this.porDebajoDeCantidadMinima === true
+      ) {
+        this.requiereAprobacionPrecio = true;
+        this.colorToolbar = 'danger';
+        this.solicitarPrecio = true;
+        this.mensajeBotonSolicitarPrecio =
+          ' Enviar Aprobación Por Precio y Salvar';
+        if (this.appProduct.requiereEstimacion === true) {
+          this.mensajeBotonSolicitarPrecio =
+            ' Enviar Aprobación Por Estimación(' +
+            this.appProduct.code +
+            ')' +
+            '  y Salvar';
+        }
+      }
+    }
+  }
+
+  encontrarValorMasCercano(
+    item: any,
+    objetivo: number,
+    ...valores: number[]
+  ): number {
+    if (valores.length === 0) {
+      throw new Error('Debe proporcionar al menos un valor para comparar');
+    }
+
+    // 1. Encontrar el más cercano de la lista 'valores'
+    let valorMasCercano = valores.reduce((prev, curr) =>
+      Math.abs(curr - objetivo) < Math.abs(prev - objetivo) ? curr : prev,
+    );
+
+    // 2. Lógica de conversión de unidad
+    // Validamos que exista el DTO, que las unidades coincidan
+    // Y MUY IMPORTANTE: que el precio convertido sea > 0
+    if (
+      item.appProductConversionGetDto &&
+      item.appProductConversionGetDto.appUnitsIdAlternativa === item.idUnidad &&
+      item.unitPriceConverted > 0 // <--- Validación crucial
+    ) {
+      valorMasCercano = item.unitPriceConverted;
+    }
+
+    // 3. Salvaguarda final: Si por alguna razón el resultado sigue siendo 0
+    // devolvemos el primer valor de la lista original o el objetivo
+    return valorMasCercano > 0 ? valorMasCercano : valores[0] || objetivo;
+  }
+
+  setPrecioMasFlete() {
+    const precioString = localStorage.getItem('precio-mas-flete');
+
+    // 1. Validar si el valor existe en localStorage
+    if (precioString === null || precioString === 'undefined') {
+      // 'undefined' string can sometimes appear if not set correctly
+      console.warn(
+        'Advertencia: "precio-mas-flete" no encontrado en localStorage.',
+      );
+      // Aquí puedes decidir cómo manejar la ausencia del valor:
+      // a) Asignar valores por defecto a tus propiedades:
+      this.newPrecioMasFlete = 0;
+      this.flete = 0;
+      this.unitPriceBaseProduction = 0;
+      this.calculoId = 0; // O null, dependiendo de tu lógica
+      this.precioMaximo = 0;
+      this.porDebajoDeCantidadMinima = false;
+      // b) O, podrías simplemente retornar la función para evitar ejecutar el resto del código
+      // return;
+    } else {
+      // 2. Si el valor existe, proceder a parsearlo
+      const precio: PrecioDto = JSON.parse(precioString);
+      console.log('precio-mas-flete linea 1389>>>>>>', precio);
+
+      // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
+      this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
+      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+      this.flete = precio.flete ?? 0;
+      this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
+      this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
+      this.precioMaximo = precio.precioMaximo ?? 0;
+      this.porDebajoDeCantidadMinima =
+        precio.porDebajoDeCantidadMinima ?? false;
+    }
+
+    // El resto de tu lógica que depende de 'this.item' se ejecuta después de
+    // que las variables de precio se hayan inicializado (ya sea desde localStorage o con valores por defecto)
+
+    if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
+      console.log('en la linea 1406');
+      this.unitPriceBaseProduction =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+      this.newPrecioMasFlete =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+    } else {
+      if (
+        (this.item.appProductsGetDto &&
+          this.item.appProductsGetDto.requiereEstimacion) ||
+        this.porDebajoDeCantidadMinima
+      ) {
+        this.newPrecioMasFlete = 0;
+        this.flete = 0;
+        this.unitPriceBaseProduction = 0;
+        this.calculoId = 0;
+        this.precioMaximo = 0;
+      }
+    }
+
+    console.log('item>>>>>>>>>>', this.item);
+    if (this.item.idEstatus >= 5) {
+      ///const precio: PrecioDto = JSON.parse(precioString); s
+
+      const a = this.item?.unitPriceBaseProduction ?? 0;
+      let b = this.item?.unitPriceConverted ?? 0;
+      if (b === 0) {
+        b = this.item?.unitPriceBaseProduction ?? 0;
+      }
+      const objetivo = this.item?.precioUsd ?? 0;
+      const resultado = this.encontrarValorMasCercano(
+        this.item,
+        objetivo,
+        a,
+        b,
+      );
+      console.log(a, b, objetivo);
+      console.log('resultado', resultado);
+      console.log('item', this.item);
+      this.calculoId = this.item?.calculoId ?? 0;
+      this.unitPriceBaseProduction = resultado;
+      this.flete = this.item?.flete ?? 0;
+
+      this.newPrecioMasFlete = this.unitPriceBaseProduction ?? 0;
+
+      this.newPrecioMasFlete = this.newPrecioMasFlete + this.flete;
+      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+    }
+  }
+
+  setPrecioMasFleteOriginal() {
+    const precio: PrecioDto = JSON.parse(
+      localStorage.getItem('precio-mas-flete'),
+    );
+    console.log('precio-mas-flete', precio);
+    this.newPrecioMasFlete = precio.precioMasFlete;
+    this.flete = precio.flete;
+    this.unitPriceBaseProduction = precio.unitPriceBaseProduction;
+
+    this.calculoId = precio.calculoId;
+    if (this.item.idEstatus >= 5) {
+      this.unitPriceBaseProduction = this.item?.unitPriceBaseProduction ?? 0; // Valor por defecto 0 si es null/undefined
+      this.flete = this.item?.flete ?? 0; // Valor por defecto 0 si es null/undefined
+      this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete || 0; // Evita NaN
+      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2); // Redondea a 2 decimales
+    }
+    if (
+      this.item.statusAprobacionDto.aprobado &&
+      this.item.statusAprobacionDto.flagCerrado
+    ) {
+      this.unitPriceBaseProduction =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+      this.newPrecioMasFlete =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+    }
+  }
   setColorToolbar() {
     this.concesionString = '';
     this.variables.precioUsd = this.form.get('precioUsd').value;
     this.concesion = 0;
-    const lista = Number(this.precioMasFlete);
+    this.setPrecioMasFlete();
+    this.requiereAprobacionPrecio = false;
+    this.colorToolbar = 'primary';
+    this.solicitarPrecio = false;
+    this.mensajeBotonSolicitarPrecio = '';
+
+    const lista = Number(this.newPrecioMasFlete);
     if (lista !== 0) {
       this.concesion = (lista - this.variables.precioUsd) / lista;
 
       this.concesion = this.concesion * 100;
       this.concesionString = '';
-
       if (this.concesion < 0) {
         this.concesionString =
           '+' + Number(this.concesion.toFixed(2)) * -1 + '% de sobre margen';
@@ -1098,16 +1502,32 @@ export class EditPage implements OnInit {
         this.concesionString =
           '-' + Number(this.concesion.toFixed(2)) + '% de descuento';
       }
+      if (this.concesion === 0) {
+        this.concesionString = '0% de descuento';
+      }
     }
 
     let cantidad = this.form.get('cantidad').value;
+    if (this.appProduct.tipoCalculo === 4) {
+      cantidad = this.form.get('cantidadConvertidaAlternativa').value;
+    }
+
     if (this.operacion === 1) {
       //editar
+
+      if (this.item.idEstatus >= 5) {
+        this.requiereAprobacionPrecio = false;
+        this.colorToolbar = 'primary';
+        this.solicitarPrecio = false;
+        this.mensajeBotonSolicitarPrecio = '';
+        return;
+      }
 
       if (
         this.item.statusAprobacionDto.aprobado &&
         this.item.statusAprobacionDto.flagCerrado
       ) {
+        console.log('linea 1194');
         this.requiereAprobacionPrecio = false;
         this.colorToolbar = 'success';
         this.solicitarPrecio = false;
@@ -1116,62 +1536,44 @@ export class EditPage implements OnInit {
         /*if(this.appProduct.tipoCalculo === 4){
                   cantidad= this.form.get('cantidadConvertidaAlternativa').value;
                 }*/
+        console.log('linea 1203');
+        console.log(this.variables.precioUsd);
+        console.log({
+          newPrecioMasFlete: this.newPrecioMasFlete,
+          precioUsd: this.variables.precioUsd,
+          porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
+        });
+
         if (
-          this.precioMasFlete > this.variables.precioUsd ||
+          this.newPrecioMasFlete > this.variables.precioUsd ||
           this.appProduct.requiereEstimacion === true ||
-          (cantidad > 0 && cantidad < this.appProduct.cantidadMinima)
+          this.porDebajoDeCantidadMinima === true
         ) {
+          console.log('linea 12010');
           this.requiereAprobacionPrecio = true;
           this.colorToolbar = 'danger';
           this.solicitarPrecio = true;
           this.mensajeBotonSolicitarPrecio =
             'Enviar Aprobación Por Precio y Salvar';
         } else {
+          console.log('linea 1217');
           this.requiereAprobacionPrecio = false;
           this.colorToolbar = 'primary';
           this.solicitarPrecio = false;
           this.mensajeBotonSolicitarPrecio = '';
         }
       }
-      if (this.isBs === true && !this.item.statusAprobacionDto.aprobado) {
-        this.requiereAprobacionPrecio = true;
-        this.colorToolbar = 'danger';
-        this.solicitarPrecio = true;
-        this.mensajeBotonSolicitarPrecio =
-          ' Enviar Aprobación Por Precio y Salvar';
-        if (this.appProduct.tipoCalculo === 4) {
-          cantidad = this.form.get('cantidadConvertidaAlternativa').value;
-        }
-        if (this.appProduct.requiereEstimacion === true) {
-          this.mensajeBotonSolicitarPrecio =
-            ' Enviar Aprobación Por Estimación(' +
-            this.appProduct.code +
-            ')' +
-            '  y Salvar';
-        }
-
-        if (cantidad < this.appProduct.cantidadMinima) {
-          this.requiereAprobacionPrecio = true;
-          this.colorToolbar = 'danger';
-          this.solicitarPrecio = true;
-          this.mensajeBotonSolicitarPrecio =
-            ' Enviar Aprobación Por Cantidad Mínima(' +
-            this.appProduct.cantidadMinima +
-            ')' +
-            '  y Salvar';
-        }
-      }
     } else {
       //nuevo
       if (this.appProduct) {
         cantidad = this.form.get('cantidad').value;
-        /*if (this.appProduct.tipoCalculo === 4) {
+        if (this.appProduct.tipoCalculo === 4) {
           cantidad = this.form.get('cantidadConvertidaAlternativa').value;
-        }*/
+        }
         if (
-          this.precioMasFlete > this.variables.precioUsd ||
+          this.newPrecioMasFlete > this.variables.precioUsd ||
           this.appProduct.requiereEstimacion === true ||
-          (cantidad > 0 && cantidad < this.appProduct.cantidadMinima)
+          this.porDebajoDeCantidadMinima === true
         ) {
           this.requiereAprobacionPrecio = true;
           this.colorToolbar = 'danger';
@@ -1256,7 +1658,7 @@ export class EditPage implements OnInit {
       this.form
         .get('unidad')
         .setValue(
-          this.appProductConversionGetDto.appUnitsAlternativaDescription
+          this.appProductConversionGetDto.appUnitsAlternativaDescription,
         );
       this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
       //this.descripcionSalesUnit =this.appProductConversionGetDto.appUnitsAlternativaDescription;
@@ -1274,7 +1676,7 @@ export class EditPage implements OnInit {
 
       const precio = this.buscarPrecioPorRango(
         this.appPriceDto,
-        cantidadBuscarPrecio
+        cantidadBuscarPrecio,
       );
 
       this.item.unitPriceBaseProduction = precio;
@@ -1285,10 +1687,8 @@ export class EditPage implements OnInit {
           (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
       }
 
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
-
-      //this.onRecalcular('onBuscarProducto');
+      //this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
+      //this.precioMasFlete = this.precioMasFlete.toFixed(2);
     }
   }
 
@@ -1296,6 +1696,7 @@ export class EditPage implements OnInit {
   async onBuscarProducto() {
     const modal = await this.modalCtrl.create({
       component: BuscadorProductosPage,
+      cssClass: 'modal-amplio',
       componentProps: {
         userConectado: this.generalService.GetUsuario().user,
         subcategoryId: this.subCategoryid,
@@ -1347,7 +1748,7 @@ export class EditPage implements OnInit {
       this.form
         .get('unidad')
         .setValue(
-          this.appProductConversionGetDto.appUnitsAlternativaDescription
+          this.appProductConversionGetDto.appUnitsAlternativaDescription,
         );
       this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
       this.descripcionSalesUnit =
@@ -1364,7 +1765,7 @@ export class EditPage implements OnInit {
       ) {
         const precio = this.buscarPrecioPorRango(
           this.appPriceDto,
-          this.form.get('cantidad').value
+          this.form.get('cantidad').value,
         );
 
         this.item.unitPriceBaseProduction = precio;
@@ -1376,8 +1777,7 @@ export class EditPage implements OnInit {
           (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
       }
 
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
+      this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete;
 
       //'onBuscarProducto');
     }
@@ -1445,7 +1845,7 @@ export class EditPage implements OnInit {
       this.uiIdUnidad = data.appProductConversion.appUnitsIdAlternativa;
       console.log(
         'this.appProductConversionGetDto',
-        this.appProductConversionGetDto
+        this.appProductConversionGetDto,
       );
       console.log('this.uiIdUnidad ', this.uiIdUnidad);
       //para la calculadora
@@ -1479,7 +1879,7 @@ export class EditPage implements OnInit {
     const calculoConversion = this.calculaConversion(
       this.form.get('cantidadSolicitada').value,
       this.form.get('medidaBasica').value,
-      this.form.get('medidaOpuesta').value
+      this.form.get('medidaOpuesta').value,
     );
     if (calculoConversion.resulCantidad) {
       const cantidadPorUnidad = calculoConversion.resulCantidad;
@@ -1495,6 +1895,7 @@ export class EditPage implements OnInit {
       return 0;
     }
   }
+
   async recalculoPrecioPorProductoCantidadLargoAncho() {
     this.form.get('cantidad').setValue(0);
 
@@ -1507,31 +1908,70 @@ export class EditPage implements OnInit {
       appDetailQuotesId: this.item.id,
       unidadId: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
+      ordenAnterior: this.form.get('ordenAnterior').value,
     };
-    console.log('filter buscando precio....Etiquetas Digitales', filter);
+    console.log(
+      'filter buscando precio....Etiquetas Digitales y prime',
+      filter,
+    );
     this.buscandoPrecio = true;
     this.mensaje = 'Buscando precio........';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
       this.mensaje = '';
       console.log(
-        'Respuesta desde GetPrice en tipo 4 etiquetas digitales',
-        resp
+        'Respuesta desde GetPrice en tipo 4 etiquetas digitales y 6 prime',
+        resp,
       );
+      var precioDto: PrecioDto = {
+        unitPriceBaseProduction: resp.data.precio,
+        precioMasFlete: resp.data.precioMasFlete,
+        calculoId: resp.data.calculoId,
+        flete: resp.data.flete,
+        porcFlete: resp.data.porcFlete,
+        precioMaximo: resp.data.precioMaximo,
+        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
+        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
+      };
+      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
       this.calculoId = resp.data.calculoId;
-      const precio = resp.data.precio;
-      this.unitPriceBaseProduction = precio;
-      this.item.unitPriceBaseProduction = precio;
+
+      this.unitPriceBaseProduction = resp.data.precio;
+      this.item.unitPriceBaseProduction = resp.data.precio;
       this.precioMaximo = resp.data.precioMaximo;
-      if (this.appProduct.requiereEstimacion === true) {
+      this.newPrecioMasFlete = resp.data.precioMasFlete;
+      this.porDebajoDeCantidadMinima = resp.data.porDebajoDeCantidadMinima;
+
+      if (
+        this.appProduct.requiereEstimacion === true ||
+        resp.data.porDebajoDeCantidadMinima === true
+      ) {
         console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
-        this.unitPriceBaseProduction = 0;
+        this.unitPriceBaseProduction = 0.00000000001;
         this.precioMaximo = 0;
+        this.newPrecioMasFlete = 0;
+        this.calculoId = 0;
+        this.uiUnitPriceConverted = 0;
+        this.precioPorUnidad = 0;
+        this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
+
         if (this.item.statusAprobacionDto.precioEstimacion > 0) {
+          console.log('TIENE PRECIO ESTIMACION');
           this.unitPriceBaseProduction =
             this.item.statusAprobacionDto.precioEstimacion;
           this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
         }
+      } else {
+        console.log('linea 1600');
+        this.flete = resp.data.flete;
+        this.newPrecioMasFlete = resp.data.precioMasFlete;
+
+        this.uiUnitPriceConverted =
+          this.newPrecioMasFlete / this.form.get('cantidad').value;
+        //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
+        this.precioPorUnidad = resp.data.precioPorUnidad;
+        this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
       }
       this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
       if (resp.data.cantidadConvertidaAlternativa) {
@@ -1540,20 +1980,13 @@ export class EditPage implements OnInit {
           .setValue(resp.data.cantidadConvertidaAlternativa);
       }
       this.item.cantidad = this.form.get('cantidad').value;
-      this.flete = resp.data.flete;
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
-      this.form.get('precio').setValue(this.precioMasFlete);
+
+      this.form.get('precio').setValue(this.newPrecioMasFlete);
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
-      this.uiUnitPriceConverted =
-        this.precioMasFlete / this.form.get('cantidad').value;
-      //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
-      this.precioPorUnidad = resp.data.precioPorUnidad;
-      this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
 
       if (this.isBs === true) {
         //COTIZACION EN BS
@@ -1565,21 +1998,21 @@ export class EditPage implements OnInit {
         this.form
           .get('total')
           .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value
+            this.form.get('precio').value * this.form.get('cantidad').value,
           );
         this.form
           .get('totalUsd')
           .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
       }
-
+      this.isDolar = true;
       if (this.isDolar) {
         //COTIZACION EN DOLARES
         this.form
           .get('totalUsd')
           .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
         console.log('totalUsd', this.form.get('totalUsd').value);
         if (this.tasa > 0) {
@@ -1594,7 +2027,7 @@ export class EditPage implements OnInit {
         this.form
           .get('total')
           .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value
+            this.form.get('precio').value * this.form.get('cantidad').value,
           );
       }
       this.setColorToolbar();
@@ -1602,12 +2035,13 @@ export class EditPage implements OnInit {
     });
   }
   recalculoRequiereEntradaLargoAncho() {
-    this.mensaje = 'Buscando precio........';
+    this.mensaje =
+      'Buscando precio em recalculoRequiereEntradaLargoAncho........';
     if (this.appProduct.tipoCalculo === 1) {
       const calculoConversion = this.calculaConversion(
         this.form.get('cantidadSolicitada').value,
         this.form.get('medidaBasica').value,
-        this.form.get('medidaOpuesta').value
+        this.form.get('medidaOpuesta').value,
       );
 
       this.cantidadPorUnidadProduccion = calculoConversion.resulCantidad;
@@ -1622,7 +2056,7 @@ export class EditPage implements OnInit {
       .get('cantidad')
       .setValue(
         this.form.get('cantidadSolicitada').value /
-          this.cantidadPorUnidadProduccion
+          this.cantidadPorUnidadProduccion,
       );
 
     /* if (this.dtoCalculadora.appUnitIdUntil == this.dtoCalculadora.appUnitIdSince) {
@@ -1649,7 +2083,7 @@ export class EditPage implements OnInit {
     ) {
       const precio = this.buscarPrecioPorRango(
         this.appPriceDto,
-        this.form.get('cantidad').value
+        this.form.get('cantidad').value,
       );
       this.item.unitPriceBaseProduction = precio;
       this.unitPriceBaseProduction = precio;
@@ -1669,10 +2103,20 @@ export class EditPage implements OnInit {
         (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
     }
 
-    this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-    this.precioMasFlete = this.precioMasFlete.toFixed(2);
+    var precioDto: PrecioDto = {
+      unitPriceBaseProduction: this.unitPriceBaseProduction,
+      precioMasFlete: this.unitPriceBaseProduction + this.flete,
+      calculoId: 0,
+      flete: this.flete,
+      porcFlete: this.cotizacion.porcFlete,
+      precioMaximo: this.precioMaximo,
+      precioMaximoMasFlete: this.precioMaximo + this.flete,
+      porDebajoDeCantidadMinima: false,
+    };
+    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
     this.uiUnitPriceConverted =
-      this.precioMasFlete / this.cantidadPorUnidadProduccion;
+      this.newPrecioMasFlete / this.cantidadPorUnidadProduccion;
 
     if (this.isBs === true) {
       //COTIZACION EN BS
@@ -1684,22 +2128,22 @@ export class EditPage implements OnInit {
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
       this.form
         .get('totalUsd')
         .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
         );
     }
-
+    this.isDolar = true;
     if (this.isDolar) {
       //COTIZACION EN DOLARES
 
       this.form
         .get('totalUsd')
         .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
         );
 
       if (this.tasa > 0) {
@@ -1714,7 +2158,7 @@ export class EditPage implements OnInit {
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
     }
     this.mensaje = '';
@@ -1724,7 +2168,7 @@ export class EditPage implements OnInit {
     this.mensaje = 'Buscando precio por rango ***........';
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
-      this.form.get('cantidadSolicitada').value
+      this.form.get('cantidadSolicitada').value,
     );
 
     this.form.get('cantidad').setValue(cantidad);
@@ -1743,17 +2187,15 @@ export class EditPage implements OnInit {
     this.longituDecimal = longitud.toString();
     const precio = this.buscarPrecioPorRango(
       this.appPriceDto,
-      this.form.get('cantidad').value
+      this.form.get('cantidad').value,
     );
     this.precioMaximo = this.buscarPrecioMaximoPorRango(
       this.appPriceDto,
-      this.form.get('cantidad').value
+      this.form.get('cantidad').value,
     );
-    console.log('this.precioMaximo', this.precioMaximo);
-    console.log('   this.condicionPagoDto', this.condicionPagoDto);
 
-    this.item.unitPriceBaseProduction =
-      precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
+    this.item.unitPriceBaseProduction = precio;
+    precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
 
     this.unitPriceBaseProduction =
       precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
@@ -1761,10 +2203,6 @@ export class EditPage implements OnInit {
       this.precioMaximo +
       (this.precioMaximo * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
 
-    console.log(
-      'this.unitPriceBaseProduction >>>>>',
-      this.unitPriceBaseProduction
-    );
     if (this.appProduct.requiereEstimacion === true) {
       console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
       this.unitPriceBaseProduction = 0;
@@ -1785,11 +2223,20 @@ export class EditPage implements OnInit {
     this.flete = (this.unitPriceBaseProduction * porcFlete) / 100;
     console.log('this.flete>>>>>', this.flete);
 
-    this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-    this.precioMasFlete = this.precioMasFlete.toFixed(2);
-    console.log('precioMasFlete >>>>>>>>', this.precioMasFlete);
+    var precioDto: PrecioDto = {
+      unitPriceBaseProduction: this.unitPriceBaseProduction,
+      precioMasFlete: this.unitPriceBaseProduction + this.flete,
+      calculoId: 0,
+      flete: this.flete,
+      porcFlete: porcFlete,
+      precioMaximo: this.precioMaximo,
+      precioMaximoMasFlete: this.precioMaximo + this.flete,
+      porDebajoDeCantidadMinima: false,
+    };
+    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
     this.uiUnitPriceConverted =
-      this.precioMasFlete / this.cantidadPorUnidadProduccion;
+      this.newPrecioMasFlete / this.cantidadPorUnidadProduccion;
 
     if (this.isBs === true) {
       //COTIZACION EN BS
@@ -1801,22 +2248,22 @@ export class EditPage implements OnInit {
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
       this.form
         .get('totalUsd')
         .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
         );
     }
-
+    this.isDolar = true;
     if (this.isDolar) {
       //COTIZACION EN DOLARES
 
       this.form
         .get('totalUsd')
         .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
         );
       if (this.tasa > 0) {
         if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
@@ -1830,7 +2277,7 @@ export class EditPage implements OnInit {
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
     }
     this.mensaje = '';
@@ -1840,7 +2287,7 @@ export class EditPage implements OnInit {
   async recalculoPrecioPorProductoCantidad() {
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
-      this.form.get('cantidadSolicitada').value
+      this.form.get('cantidadSolicitada').value,
     );
 
     this.form.get('cantidad').setValue(cantidad);
@@ -1858,108 +2305,153 @@ export class EditPage implements OnInit {
     const longitud = this.decimalCount(this.form.get('cantidad').value);
     this.longituDecimal = longitud.toString();
 
-    const filter = {
+    /*const filter = {
       appProuctId: this.uiIdProducto,
       cantidad: this.form.get('cantidadSolicitada').value,
+      appDetailQuotesId: this.item.id,
+      unidadId: this.uiIdUnidad,
+      condicionDePago: this.form.get('condicionPago').value,
+    };*/
+
+    const filter = {
+      idMunicipio: this.cotizacion.idMunicipio,
+      appProuctId: this.appProduct.id,
+      cantidad: this.form.get('cantidadSolicitada').value,
+      largo: this.form.get('medidaBasica').value,
+      ancho: this.form.get('medidaOpuesta').value,
       appDetailQuotesId: this.item.id,
       unidadId: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
     };
 
     this.buscandoPrecio = true;
-    this.mensaje = 'Buscando precio........';
+    this.mensaje = 'Buscando precio ........';
+    console.log('Buscando precio en recalculoPrecioPorProductoCantidad');
     console.log('filter en buscar cantidad producto', filter);
-    await this.productoService
-      .buscaProductoCantidad(filter)
-      .subscribe((resp) => {
-        console.log('resp en busqueda por producto cantidad', resp);
-        this.buscandoPrecio = false;
-        this.mensaje = '';
-        this.calculoId = resp.calculoId;
-        const precio = resp.precio;
-        this.item.unitPriceBaseProduction = precio;
-        this.unitPriceBaseProduction = precio;
-        this.precioMaximo = resp.precioMaximo;
-        if (this.appProduct.requiereEstimacion === true) {
-          console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
-          this.unitPriceBaseProduction = 0;
-          this.precioMaximo = 0;
-          if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-            this.unitPriceBaseProduction =
-              this.item.statusAprobacionDto.precioEstimacion;
-            this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
-          }
-        }
-        if (this.cotizacion.porcFlete > 0) {
+    await this.productoService.getPrice(filter).subscribe((resp) => {
+      console.log('resp en busqueda por producto cantidad', resp);
+      console.log(
+        'Producto es Estimacion:',
+        this.appProduct.requiereEstimacion,
+      );
+      this.buscandoPrecio = false;
+      this.mensaje = '';
+      console.log('resp.data.precio', resp.data);
+      this.calculoId = resp.data.calculoId;
+      const precio = resp.data.precio;
+      this.unitPriceBaseProduction = precio;
+      this.precioMaximo = resp.data.precioMaximo;
+      this.item.unitPriceBaseProduction = precio;
+      this.flete = resp.data.flete;
+      let calculoIdResponse = 0;
+      if (resp.data.calculoId) {
+        calculoIdResponse = resp.data.calculoId;
+      }
+
+      var precioDto: PrecioDto = {
+        unitPriceBaseProduction: resp.data.precio,
+        precioMasFlete: resp.data.precioMasFlete,
+        calculoId: calculoIdResponse,
+        flete: resp.data.flete,
+        porcFlete: this.cotizacion.porcFlete,
+        precioMaximo: resp.data.precioMaximo,
+        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
+        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
+      };
+      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
+      if (
+        this.appProduct.requiereEstimacion === true ||
+        resp.data.porDebajoDeCantidadMinima
+      ) {
+        this.unitPriceBaseProduction = 0;
+        this.precioMaximo = 0;
+        this.newPrecioMasFlete = 0;
+        this.calculoId = 0;
+        this.uiUnitPriceConverted = 0;
+        if (this.item.statusAprobacionDto.precioEstimacion > 0) {
+          this.unitPriceBaseProduction =
+            this.item.statusAprobacionDto.precioEstimacion;
+          this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
           this.flete =
             (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
-        }
-        this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-        this.precioMasFlete = this.precioMasFlete.toFixed(2);
-        console.log('cantidadConvertida', resp.cantidadConvertida);
 
-        if (resp.cantidadConvertida > 0) {
-          this.form.get('cantidad').setValue(resp.cantidadConvertida);
-          this.item.cantidad = this.form.get('cantidad').value;
+          var precioDto: PrecioDto = {
+            unitPriceBaseProduction: resp.data.precio,
+            precioMasFlete: resp.data.precioMasFlete,
+            calculoId: resp.data.calculoId,
+            flete: resp.data.flete,
+            porcFlete: this.cotizacion.porcFlete,
+            precioMaximo: resp.data.precioMaximo,
+            precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
+            porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
+          };
+          localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
         }
-        if (
-          resp.cantidadConvertidaAlternativa &&
-          resp.cantidadConvertidaAlternativa > 0
-        ) {
-          this.form
-            .get('cantidadConvertidaAlternativa')
-            .setValue(resp.cantidadConvertidaAlternativa);
-        } else {
-          this.form
-            .get('cantidadConvertidaAlternativa')
-            .setValue(resp.cantidadConvertida);
-        }
+      }
 
-        if (this.isBs === true) {
-          //COTIZACION EN BS
-          if (this.tasa > 0) {
+      if (resp.data.cantidadConvertida > 0) {
+        this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
+        this.item.cantidad = this.form.get('cantidad').value;
+      }
+      if (
+        resp.data.cantidadConvertidaAlternativa &&
+        resp.data.cantidadConvertidaAlternativa > 0
+      ) {
+        this.form
+          .get('cantidadConvertidaAlternativa')
+          .setValue(resp.data.cantidadConvertidaAlternativa);
+      } else {
+        this.form
+          .get('cantidadConvertidaAlternativa')
+          .setValue(resp.data.cantidadConvertida);
+      }
+
+      if (this.isBs === true) {
+        //COTIZACION EN BS
+        if (this.tasa > 0) {
+          this.form
+            .get('precioUsd')
+            .setValue(this.form.get('precio').value / this.tasa);
+        }
+        this.form
+          .get('total')
+          .setValue(
+            this.form.get('precio').value * this.form.get('cantidad').value,
+          );
+        this.form
+          .get('totalUsd')
+          .setValue(
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
+          );
+      }
+      this.isDolar = true;
+      if (this.isDolar) {
+        //COTIZACION EN DOLARES
+
+        this.form
+          .get('totalUsd')
+          .setValue(
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
+          );
+        if (this.tasa > 0) {
+          if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
+            this.ultimoPrecioUsd = this.form.get('precioUsd').value;
             this.form
-              .get('precioUsd')
-              .setValue(this.form.get('precio').value / this.tasa);
+              .get('precio')
+              .setValue(this.form.get('precioUsd').value * this.tasa);
           }
-          this.form
-            .get('total')
-            .setValue(
-              this.form.get('precio').value * this.form.get('cantidad').value
-            );
-          this.form
-            .get('totalUsd')
-            .setValue(
-              this.form.get('precioUsd').value * this.form.get('cantidad').value
-            );
         }
 
-        if (this.isDolar) {
-          //COTIZACION EN DOLARES
+        this.form
+          .get('total')
+          .setValue(
+            this.form.get('precio').value * this.form.get('cantidad').value,
+          );
+      }
 
-          this.form
-            .get('totalUsd')
-            .setValue(
-              this.form.get('precioUsd').value * this.form.get('cantidad').value
-            );
-          if (this.tasa > 0) {
-            if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-              this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-              this.form
-                .get('precio')
-                .setValue(this.form.get('precioUsd').value * this.tasa);
-            }
-          }
-
-          this.form
-            .get('total')
-            .setValue(
-              this.form.get('precio').value * this.form.get('cantidad').value
-            );
-        }
-
-        this.setColorToolbar();
-      });
+      this.setColorToolbar();
+    });
   }
 
   async recalculoPrecioPorProductoCantidadRollo() {
@@ -1976,7 +2468,7 @@ export class EditPage implements OnInit {
     };
     console.log('filter buscando precio rollo', filter);
     this.buscandoPrecio = true;
-    this.mensaje = 'Buscando precio........';
+    this.mensaje = 'Buscando precio por rollo........';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
       this.mensaje = '';
@@ -1986,10 +2478,45 @@ export class EditPage implements OnInit {
       this.unitPriceBaseProduction = precio;
       this.precioMaximo = resp.data.precioMaximo;
       this.item.unitPriceBaseProduction = precio;
-      if (this.appProduct.requiereEstimacion === true) {
+      this.flete = resp.data.flete;
+
+      var precioDto: PrecioDto = {
+        unitPriceBaseProduction: resp.data.precio,
+        precioMasFlete: resp.data.precioMasFlete,
+        calculoId: resp.data.calculoId,
+        flete: resp.data.flete,
+        porcFlete: this.cotizacion.porcFlete,
+        precioMaximo: resp.data.precioMaximo,
+        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
+        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
+      };
+      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
+      this.porDebajoDeCantidadMinima = resp.data.porDebajoDeCantidadMinima;
+      if (
+        this.appProduct.requiereEstimacion === true ||
+        resp.data.porDebajoDeCantidadMinima === true
+      ) {
         console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
         this.unitPriceBaseProduction = 0;
         this.precioMaximo = 0;
+        this.flete = 0;
+
+        var precioDto: PrecioDto = {
+          unitPriceBaseProduction: 0,
+          precioMasFlete: 0,
+          calculoId: 0,
+          flete: 0,
+          porcFlete: 0,
+          precioMaximo: 0,
+          precioMaximoMasFlete: 0,
+          porDebajoDeCantidadMinima: false,
+        };
+        localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+
+        this.calculoId = 0;
+        this.uiUnitPriceConverted = 0;
+        this.precioPorUnidad = 0;
         if (this.item.statusAprobacionDto.precioEstimacion > 0) {
           this.unitPriceBaseProduction =
             this.item.statusAprobacionDto.precioEstimacion;
@@ -2007,17 +2534,15 @@ export class EditPage implements OnInit {
           .setValue(resp.data.cantidadConvertidaAlternativa);
       }
       this.item.cantidad = this.form.get('cantidad').value;
-      this.flete = resp.data.flete;
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
-      this.form.get('precio').setValue(this.precioMasFlete);
+
+      this.form.get('precio').setValue(this.newPrecioMasFlete);
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
       this.uiUnitPriceConverted =
-        this.precioMasFlete / this.form.get('cantidad').value;
+        this.newPrecioMasFlete / this.form.get('cantidad').value;
       //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
       if (this.isBs === true) {
         //COTIZACION EN BS
@@ -2029,21 +2554,21 @@ export class EditPage implements OnInit {
         this.form
           .get('total')
           .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value
+            this.form.get('precio').value * this.form.get('cantidad').value,
           );
         this.form
           .get('totalUsd')
           .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
       }
-
+      this.isDolar = true;
       if (this.isDolar) {
         //COTIZACION EN DOLARES
         this.form
           .get('totalUsd')
           .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value
+            this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
         console.log('totalUsd', this.form.get('totalUsd').value);
         if (this.tasa > 0) {
@@ -2058,7 +2583,7 @@ export class EditPage implements OnInit {
         this.form
           .get('total')
           .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value
+            this.form.get('precio').value * this.form.get('cantidad').value,
           );
       }
       this.mensaje = '';
@@ -2077,13 +2602,13 @@ export class EditPage implements OnInit {
       this.form
         .get('total')
         .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
+          this.form.get('precio').value * this.form.get('cantidad').value,
         );
       this.form
         .get('totalUsd')
         .setValue(precioRecibido * this.form.get('cantidad').value);
     }
-
+    this.isDolar = true;
     if (this.isDolar) {
       //COTIZACION EN DOLARES
 
@@ -2109,12 +2634,17 @@ export class EditPage implements OnInit {
   async onRecalcular(origenLlamada: string) {
     //this.subjectKeyUp.next('cantidadSolicitadaChanged');
 
-    if (this.item.idEstatus >= 5) {
+    /*if (this.item.idEstatus >= 5) {
       return;
-    }
+    }*/
 
     if (this.appProduct != null) {
-      console.log('Producto', this.appProduct);
+      console.log({
+        producto: this.appProduct,
+        cantidadAlternativa: this.form.get('cantidadConvertidaAlternativa')
+          .value,
+      });
+
       switch (this.appProduct.tipoCalculo) {
         //RequiereEntradaLargoAncho=1
         case 1:
@@ -2174,6 +2704,7 @@ export class EditPage implements OnInit {
           }
 
           break;
+        //ETTIQUETAS PRIME
         case 6:
           this.form.get('cantidad').setValue(0);
           this.form.get('cantidadConvertidaAlternativa').setValue(0);
@@ -2193,9 +2724,17 @@ export class EditPage implements OnInit {
 
   buscarPrecioPorRango(_appPriceDto: AppPriceDto[], cantidad: number): number {
     let result: number;
+    console.log('_appPriceDto en buscarPrecioPorRango', _appPriceDto);
+    console.log(
+      'this.item.appProductsGetDto.appPriceDto en buscarPrecioPorRango',
+      this.item,
+    );
+    if (_appPriceDto.length == 0) {
+      _appPriceDto = this.item.appProductsGetDto.appPriceDto;
+    }
 
     const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta
+      (x) => cantidad >= x.desde && cantidad <= x.hasta,
     );
 
     if (precio != null && precio.length > 0) {
@@ -2208,12 +2747,12 @@ export class EditPage implements OnInit {
   }
   buscarPrecioMaximoPorRango(
     _appPriceDto: AppPriceDto[],
-    cantidad: number
+    cantidad: number,
   ): number {
     let result: number;
 
     const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta
+      (x) => cantidad >= x.desde && cantidad <= x.hasta,
     );
 
     if (precio != null && precio.length > 0) {
@@ -2254,12 +2793,12 @@ export class EditPage implements OnInit {
 
   calculoConversionGenerico(
     appProductConversionGetDto: AppProductConversionGetDto,
-    cantidad: number
+    cantidad: number,
   ): number {
     const conversion = new Conversion(
       appProductConversionGetDto.xNumerador,
       appProductConversionGetDto.yDenominador,
-      cantidad
+      cantidad,
     );
     const result = conversion.getCantidadAlternativa();
 
@@ -2269,7 +2808,7 @@ export class EditPage implements OnInit {
   calculaConversion(
     cantidadSolicitada: number,
     medidaBasica: number,
-    medidaOpuesta: number
+    medidaOpuesta: number,
   ): ResultConversionUnidadesMetrosCuadrados {
     if (!this.parametrosMaquinas.medidaBasicaRollo) {
       this.parametrosMaquinas = {
@@ -2298,7 +2837,7 @@ export class EditPage implements OnInit {
       this.parametrosMaquinas.adicionalProduccion,
       this.parametrosMaquinas.adicionalProduccionOpuesta,
       this.parametrosMaquinas.medidaBasicaRollo,
-      this.parametrosMaquinas.medidaOpuestaRollo
+      this.parametrosMaquinas.medidaOpuestaRollo,
     );
 
     conversion.cantidadBase = cantidadSolicitada;

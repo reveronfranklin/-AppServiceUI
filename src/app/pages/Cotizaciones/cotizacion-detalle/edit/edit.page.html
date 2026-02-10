@@ -108,17 +108,14 @@
           <p class="ion-text-wrap bold" *ngIf="this.appProduct === null"> {{this.cotizacion.cotizacion}} </p>
           <p class="listatasa" *ngIf="cantidadPorUnidad>0">
             $ {{ descripcionSalesUnit }} :
-            {{generalService.maskFloat(precioMasFlete/(this.form.get('cantidadSolicitada').value
+            {{generalService.maskFloat(newPrecioMasFlete/(this.form.get('cantidadSolicitada').value
             /this.form.get('cantidad').value),5) }} -
             {{generalService.maskFloat( this.form.get('cantidadSolicitada').value /this.form.get('cantidad').value,0) }}
             {{ descripcionSalesUnit }} X {{
             decripcionProductionUnit }}
           </p>
 
-          <!--  <p class="listatasa" *ngIf="false">
-                        $ {{ descripcionSalesUnit }} : {{generalService.maskFloat(uiUnitPriceConverted,4) }}
-                        {{ cantidadPorUnidadProduccion }} {{decripcionProductionUnit }} {{mensaje}}
-                    </p> -->
+
 
           <p class="bold">
             Tasa: {{ generalService.maskFloat(uiTasa,4) }}
@@ -151,8 +148,7 @@
           <!-- Combo Subcategoria -->
           <ion-row>
             <!-- <ion-col size-lg="12" size-md="12" size-sm="12" size="12" > -->
-            <ion-col size-lg="12" size-md="12" size-sm="12" size="12"
-              *ngIf="subCategoryid!==2 && mostrarEnDesarrollo && this.mostarOrdenAnterior===true">
+            <ion-col size-lg="12" size-md="12" size-sm="12" size="12" *ngIf="subCategoryid!==2 ">
               <ion-item class="small-list">
                 <ion-label style="align-items: left" class="bold">Orden Anterior:</ion-label>
                 <ion-input type="text" formControlName="ordenAnterior" readonly placeholder="Buscar Orden Anterior">
@@ -333,7 +329,8 @@
 
 
           <!-- si es  US$ -->
-          <div *ngIf="isDolar">
+          <!--   <div *ngIf="isDolar"> -->
+          <div>
             <!-- Precio US$ -->
             <ion-row>
               <ion-col size-lg="6" size-md="6" size-sm="6" size="12">
@@ -341,9 +338,8 @@
                   <ion-label class="bold">
                     <p class="listatasa">
                       P. Min: {{ decripcionProductionUnit }} US$:
-                      ({{generalService.maskFloat(precioMasFlete,2)}}) {{mensaje}}
-                      Id:{{calculoId}} P. Max:{{generalService.maskFloat(this.precioMaximo + (this.precioMaximo
-                      * this.cotizacion.porcFlete)/100)}}
+                      ({{this.newPrecioMasFlete}}) {{mensaje}}
+                      Id:{{calculoId}} P. Max:{{generalService.maskFloat(this.precioMaximo + this.flete)}}
 
                     </p>
                     <p class="listatasa">
@@ -384,7 +380,7 @@
                 <ion-item>
                   <ion-label class="bold">
                     <p class="listatasa">
-                      ({{generalService.maskFloat(precioMasFlete * uiTasa ,2)}})
+                      ({{generalService.maskFloat(newPrecioMasFlete * uiTasa ,2)}})
                     </p>
                     <p>
                       Precio Bs.:
@@ -472,7 +468,17 @@
               </ion-item>
             </ion-col>
           </ion-row>
+          <ion-row *ngIf="this.item.mensajeSolicitarPrecio">
+            <ion-col size-lg="12" size-md="12" size-sm="12" size="12">
+              <!-- obs -->
+              <ion-item>
+                <ion-label position="floating" class="bold">Mensaje Solicitud Precio</ion-label>
+                <ion-textarea formControlName="mensajeSolicitarPrecio" rows="2" cols="50" maxlength="200">
+                </ion-textarea>
 
+              </ion-item>
+            </ion-col>
+          </ion-row>
           <ion-row>
             <ion-col size-lg="12" size-md="12" size-sm="12" size="12">
               <!-- obs -->
@@ -504,7 +510,7 @@
 
             </ion-item>
             <ion-item
-              *ngIf="this.precioMasFlete < this.precioUsd && this.item.statusAprobacionDto.statusString==='APROBADO'">
+              *ngIf="this.newPrecioMasFlete < this.precioUsd && this.item.statusAprobacionDto.statusString==='APROBADO'">
 
               <ion-col>
 

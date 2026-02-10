@@ -1,30 +1,75 @@
 <ion-header>
-    <ion-toolbar color='primary'>
-        <ion-buttons slot="start">
-            <ion-back-button defaultHref="/" text=""></ion-back-button>
-        </ion-buttons>
-        <ion-title>Eliminar Cotización</ion-title>
-    </ion-toolbar>
-    <ion-row>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
 
-        <ion-col *ngIf="_eliminando">
-          <div class="ion-text-center">
-    
-            <h3>Eliminando Cotizacion.........</h3>
-    
-          </div>
-        </ion-col>
-    
-      </ion-row>
+      <ion-back-button defaultHref="/menu/cotizaciones-list" text=""></ion-back-button>
+    </ion-buttons>
+    <ion-title>Eliminar Cotización</ion-title>
+
+    <!-- Botón de cancelar en header -->
+    <ion-buttons slot="end">
+      <ion-button (click)="cancelar()" fill="clear">
+        <ion-icon name="close-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+  <ion-progress-bar *ngIf="_eliminando" type="indeterminate"></ion-progress-bar>
 </ion-header>
 
 <ion-content>
-    
-    <app-cotizacion-resumen [cotizacion]="cotizacion"></app-cotizacion-resumen>
-  
-    <ion-button *ngIf="!_eliminando" (click)="presentAlert()" color="danger" expand="block" shape="round">
-        Eliminar Cotizacion
-        <ion-icon name="trash-outline"></ion-icon>
-    </ion-button>
 
+
+  <!-- Contenido principal -->
+  <div *ngIf="!cotizacion && !_eliminando" class="ion-padding ion-text-center">
+    <ion-icon name="alert-circle-outline" size="large" color="warning"></ion-icon>
+    <h3>No hay cotización seleccionada</h3>
+    <p>Por favor, seleccione una cotización para eliminar</p>
+    <ion-button (click)="cancelar()" expand="block" fill="outline">
+      Volver a la lista
+    </ion-button>
+  </div>
+
+  <div *ngIf="cotizacion">
+    <!-- Resumen de la cotización -->
+    <app-cotizacion-resumen [cotizacion]="cotizacion"></app-cotizacion-resumen>
+
+    <!-- Información de advertencia -->
+    <ion-card color="warning" *ngIf="!cotizacion?.appDetailQuotesGetDto?.length">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning-outline"></ion-icon>
+          Advertencia
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        Esta cotización no tiene detalles. Será eliminada permanentemente.
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card color="danger" *ngIf="cotizacion?.appDetailQuotesGetDto?.length > 0">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          ¡Precaución!
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        Esta cotización tiene {{cotizacion.appDetailQuotesGetDto.length}} detalles asociados.
+        Al eliminarla, también se eliminarán todos sus detalles.
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Botones de acción -->
+    <div class="ion-padding">
+      <ion-button (click)="presentAlert()" color="danger" expand="block" shape="round" [disabled]="_eliminando">
+        <ion-icon name="trash-outline" slot="start"></ion-icon>
+        Eliminar Cotización
+      </ion-button>
+
+      <ion-button (click)="cancelar()" color="medium" expand="block" fill="outline" [disabled]="_eliminando">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Cancelar
+      </ion-button>
+    </div>
+  </div>
 </ion-content>

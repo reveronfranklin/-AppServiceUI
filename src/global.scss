@@ -16,7 +16,7 @@
 @import "~@ionic/angular/css/normalize.css";
 @import "~@ionic/angular/css/structure.css";
 @import "~@ionic/angular/css/typography.css";
-@import '~@ionic/angular/css/display.css';
+@import "~@ionic/angular/css/display.css";
 
 /* Optional CSS utils that can be commented out */
 @import "~@ionic/angular/css/padding.css";
@@ -29,14 +29,20 @@
 
 .alert-radio-label.sc-ion-alert-md,
 .alert-radio-label.sc-ion-alert-ios {
-    white-space: normal;
+  white-space: normal;
 }
 
 .alert-tappable.alert-radio {
-    height: auto;
-    contain: content;
+  height: auto;
+  contain: content;
 }
 ion-modal.create-expense-template-modal {
   --height: 750px !important;
   --width: 750px !important;
+}
+
+ion-modal.modal-amplio {
+  --width: 95%; /* Ancho del modal */
+  --height: 90%; /* Altura del modal */
+  --border-radius: 12px;
 }

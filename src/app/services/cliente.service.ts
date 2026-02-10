@@ -120,6 +120,19 @@ export class ClienteService {
       )
       .pipe();
   }
+
+  listDireccionesClientes(data): Observable<any> {
+    this.controller = 'MtrClientes/';
+    this.accionPath = 'ListDireccionesClientes';
+
+    return this.http
+      .post<any>(
+        this.basePath + this.controller + this.accionPath,
+        JSON.stringify(data)
+      )
+      .pipe();
+  }
+
   listCotizacionesPorAprobarPorUsuario(data): Observable<any> {
     this.controller = 'CotizacionesPorAprobar/';
     this.accionPath = 'GetAllBySearchText';

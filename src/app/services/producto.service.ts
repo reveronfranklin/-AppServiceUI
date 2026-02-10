@@ -11,14 +11,19 @@ import { catchError } from 'rxjs/Operators';
 })
 export class ProductoService {
   basePath: string;
+  basePathVertical: string;
   accionPath: string;
   controller: string;
 
   allProducts$ = new ReplaySubject<any>();
   product$ = new ReplaySubject<AppProductsGetDto>();
 
-  constructor(private http: HttpClient, private gensvc: GeneralService) {
+  constructor(
+    private http: HttpClient,
+    private gensvc: GeneralService,
+  ) {
     this.basePath = gensvc.basePath;
+    this.basePathVertical = gensvc.basePathVertical;
   }
 
   // ------ Modulo de productos---------- //
@@ -30,7 +35,7 @@ export class ProductoService {
     this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .subscribe((result) => {
         console.log('consulta de productos', result);
@@ -38,13 +43,37 @@ export class ProductoService {
       });
   }
 
+  GetAllAppProductsVertical(data): void {
+    this.controller = 'products/';
+    this.accionPath = 'getAll-by-subcategory';
+    console.log(data);
+    this.http
+      .post<any>(
+        this.basePathVertical + this.controller + this.accionPath,
+        JSON.stringify(data),
+      )
+      .subscribe((result) => {
+        console.log('consulta de productos vertical', result);
+        this.allProducts$.next(result);
+      });
+  }
   GetAll(data): Observable<any> {
     this.controller = 'AppProducts/';
     this.accionPath = 'GetAllAppProducts';
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
+      )
+      .pipe();
+  }
+  GetAllVertical(data): Observable<any> {
+    this.controller = 'products/';
+    this.accionPath = 'getAll-by-subcategory';
+    return this.http
+      .post<any>(
+        this.basePathVertical + this.controller + this.accionPath,
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -56,7 +85,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -71,7 +100,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe(
         catchError((error) => {
@@ -82,7 +111,7 @@ export class ProductoService {
             console.log(`Error: ${error.message}`);
           }
           return of([]);
-        })
+        }),
       );
   }
 
@@ -95,12 +124,12 @@ export class ProductoService {
       // The response body may contain clues as to what went wrong.
       console.error(
         `Backend returned code ${error.status}, body was: `,
-        error.error
+        error.error,
       );
     }
     // Return an observable with a user-facing error message.
     return throwError(
-      () => new Error('Something bad happened; please try again later.')
+      () => new Error('Something bad happened; please try again later.'),
     );
   }
 
@@ -111,7 +140,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -123,7 +152,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -135,7 +164,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -146,7 +175,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -158,7 +187,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -171,7 +200,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -184,7 +213,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -197,7 +226,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -210,7 +239,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -225,7 +254,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -238,7 +267,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -251,7 +280,19 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
+      )
+      .pipe();
+  }
+  GetAllProductusByCriteriaVertical(data): Observable<any> {
+    this.controller = 'products/';
+
+    this.accionPath = 'GetAllAppProductsByVariable';
+    console.log('GetAllAppProductsByVariable', data);
+    return this.http
+      .post<any>(
+        this.basePathVertical + this.controller + this.accionPath,
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -265,7 +306,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -280,7 +321,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -293,7 +334,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }
@@ -307,7 +348,7 @@ export class ProductoService {
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,
-        JSON.stringify(data)
+        JSON.stringify(data),
       )
       .pipe();
   }

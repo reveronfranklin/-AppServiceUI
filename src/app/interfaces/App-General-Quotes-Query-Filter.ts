@@ -1,19 +1,17 @@
 export interface AppGeneralQuotesQueryFilter {
+  //Paginacion
+  pageSize: number;
 
-    //Paginacion
-    pageSize: number;
+  pageNumber: number;
 
-    pageNumber: number
+  //Filtros
+  usuarioConectado: string;
 
+  cotizacion: string;
 
-    //Filtros
-    usuarioConectado: string;
+  searchText: string;
 
-    cotizacion: string;
-
-    searchText: string;
-
-    fechaDesde?:string;
-    fechaHasta?:string;
-
+  fechaDesde?: string;
+  fechaHasta?: string;
+  statusId?: number;
 }
