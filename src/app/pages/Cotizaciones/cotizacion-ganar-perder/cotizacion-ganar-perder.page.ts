@@ -28,7 +28,7 @@ export class CotizacionGanarPerderPage implements OnInit {
     private cotizacionesService: CotizacionesListService,
     private modalCtrl: ModalController,
     private gs: GeneralService,
-    public toastController: ToastController
+    public toastController: ToastController,
   ) {}
 
   ngOnInit() {
@@ -39,17 +39,17 @@ export class CotizacionGanarPerderPage implements OnInit {
         this.mensaje =
           'Esta cotizacion contiene un cliente Prospecto,Debe asignarun cliente establecido';
       }*/
-
+      console.log('this.cotizacion', this.cotizacion);
       this.appDetailQuotesGetDto = this.cotizacion.appDetailQuotesGetDto.filter(
-        (x) => x.idEstatus <= 2
+        (x) => x.idEstatus <= 2,
       );
       console.log(
         'this.cotizacion.appDetailQuotesGetDto',
-        this.cotizacion.appDetailQuotesGetDto
+        this.cotizacion.appDetailQuotesGetDto,
       );
       console.log(
         'En el onini this.appDetailQuotesGetDto',
-        this.appDetailQuotesGetDto
+        this.appDetailQuotesGetDto,
       );
       if (
         this.appDetailQuotesGetDto != null &&
@@ -77,7 +77,7 @@ export class CotizacionGanarPerderPage implements OnInit {
       pageSize: 100,
       pageNumber: 1,
       usuarioConectado: this.usuario.user,
-      cotizacion,
+      cotizacion: cotizacion,
       searchText: '',
       fechaDesde: this.fechaDesde,
       fechaHasta: this.fechaHasta, //this.searchText
@@ -88,10 +88,10 @@ export class CotizacionGanarPerderPage implements OnInit {
       .subscribe((listCotizacionesResult) => {
         console.log(
           'Lista de cotizaciones listCotizacionesResult buscarCotizacion: ',
-          listCotizacionesResult
+          listCotizacionesResult,
         );
         this.cotizacionesService.allCotizaciones$.next(
-          listCotizacionesResult.data
+          listCotizacionesResult.data,
         );
         this.appDetailQuotesGetDto =
           listCotizacionesResult.data[0].appDetailQuotesGetDto;
@@ -112,9 +112,14 @@ export class CotizacionGanarPerderPage implements OnInit {
       }*/
 
       this.appDetailQuotesGetDto = this.cotizacion.appDetailQuotesGetDto.filter(
-        (x) => x.idEstatus <= 2
+        (x) => x.idEstatus <= 2,
       );
       //console.log('En el onini this.appDetailQuotesGetDto', this.appDetailQuotesGetDto);
+
+      console.log(
+        'this.cotizacion.appDetailQuotesGetDto',
+        this.cotizacion.appDetailQuotesGetDto,
+      );
       if (
         this.appDetailQuotesGetDto != null &&
         this.appDetailQuotesGetDto.length > 0
@@ -172,12 +177,12 @@ export class CotizacionGanarPerderPage implements OnInit {
       .GetAllGeneralCotizacion(this.appGeneralQuotesQueryFilter)
       .subscribe((listCotizacionesResult) => {
         this.cotizacionesService.allCotizaciones$.next(
-          listCotizacionesResult.data
+          listCotizacionesResult.data,
         );
         this.cotizacion = listCotizacionesResult.data[0];
         this.appDetailQuotesGetDto =
           this.cotizacion.appDetailQuotesGetDto.filter(
-            (x) => x.idEstatus === 2
+            (x) => x.idEstatus === 2,
           );
         /*if (this.cotizacion.idCliente === '000000') {
           this.mensaje =

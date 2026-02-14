@@ -48,7 +48,7 @@
   </ion-grid>
 
   <ion-toolbar color="light">
-    <ion-searchbar [(ngModel)]="searchText" (ionInput)="onChangeSearchText($event)" debounce="800"
+    <ion-searchbar [value]="searchText" (ionInput)="onChangeSearchText($event)" debounce="800"
       placeholder="ID, Cliente, Vendedor..." animated="true">
     </ion-searchbar>
   </ion-toolbar>
@@ -97,6 +97,7 @@
             <p><b>Items:</b> {{ cot.productosCotizados}}</p>
             <p><b>Orden:</b> {{ cot.orden}}</p>
             <p><b>Orden Anterior:</b> {{ cot.ordenAnterior}}</p>
+            <p *ngIf="cot.mensajeSolicitudEstimada"><b>Motivo Estimada:</b> {{ cot.mensajeSolicitudEstimada}}</p>
 
             <p class="ion-margin-top ion-text-right">
               <ion-text [color]="getIconColor(cot.claseCss)">

@@ -96,7 +96,7 @@ export class ProductoService {
     /*return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
         catchError(this.handleError)
       );*/
-    console.log(data);
+    console.log('Payload en el servicio de getPrice Linea 99', data);
     return this.http
       .post<any>(
         this.basePath + this.controller + this.accionPath,

@@ -1093,6 +1093,7 @@ export class EditPage implements OnInit {
         next: (result) => {
           if (result.meta.isValid) {
             // Recibo cotización actualizada desde la api
+            console.log('result', result);
             this.appGeneralQuotesGetDto = result.data[0];
 
             this.cotizacionesListService.cotizacion$.next(
