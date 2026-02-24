@@ -48,7 +48,7 @@
   </ion-grid>
 
   <ion-toolbar color="light">
-    <ion-searchbar [value]="searchText" (ionInput)="onChangeSearchText($event)" debounce="800"
+    <ion-searchbar [value]="searchText" (ionChange)="onChangeSearchText($event)" debounce="800"
       placeholder="ID, Cliente, Vendedor..." animated="true">
     </ion-searchbar>
   </ion-toolbar>

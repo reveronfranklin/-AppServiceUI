@@ -43,13 +43,17 @@ export class ListPage implements OnInit {
     private toastController: ToastController,
     public cotizacionesService: CotizacionesListService,
     private actionSheetCtrl: ActionSheetController,
-    private repeticionesService: RepeticionesService
+    private repeticionesService: RepeticionesService,
   ) {}
 
   ngOnInit() {
     this.showLoading = false;
     this.cotizacionesService.cotizacion$.subscribe((cot) => {
       this.cotizacion = cot;
+      console.log(
+        'cotizacion recuperada del estado el List Detail:',
+        this.cotizacion,
+      );
     });
     if (!this.cotizacion.appDetailQuotesGetDto) {
       this.cotizacion.permiteAdicionarDetalle = true;
@@ -68,7 +72,7 @@ export class ListPage implements OnInit {
       this.detalleItems = this.cotizacion.appDetailQuotesGetDto;
       console.log(
         'cotizacion detalleItems recibido',
-        this.cotizacion.appDetailQuotesGetDto
+        this.cotizacion.appDetailQuotesGetDto,
       );
       console.log('detalleItems recibido', this.detalleItems);
       console.log('cotizacion', this.cotizacion);
@@ -81,7 +85,7 @@ export class ListPage implements OnInit {
         .subscribe((result) => {
           console.log(
             'result de lista repeticiones: result.data ',
-            result.data
+            result.data,
           );
         });
 
@@ -156,14 +160,15 @@ export class ListPage implements OnInit {
             this.appDetailQuotesDeleteDto.cotizacion = item.cotizacion;
             console.log(
               'this.appDetailQuotesDeleteDto',
-              this.appDetailQuotesDeleteDto
+              this.appDetailQuotesDeleteDto,
             );
 
             this.cotizacionesService
               .DeleteDetalleCotizacion(this.appDetailQuotesDeleteDto)
               .subscribe((result) => {
+                console.log('result', result);
                 this.cotizacion = result.data;
-                this.cotizacionesService.cotizacion$.next(this.cotizacion[0]);
+                this.cotizacionesService.cotizacion$.next(this.cotizacion);
                 if (result.meta.isValid === true) {
                   this.openToast(result.meta.message, 'success');
                 } else {

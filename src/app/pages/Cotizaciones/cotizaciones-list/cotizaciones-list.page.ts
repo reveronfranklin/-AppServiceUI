@@ -68,12 +68,15 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
     if (this.usuario) {
       this.nombreUsuario = `(${this.usuario.user})`;
     }
+    // Recuperamos el filtro guardado en el servicio
+    this.searchText = this.cotizacionesService.filterSearchText;
+
     if (this.cargando) return;
-    this.loadQuotes();
+    this.loadQuotes(this.searchText);
   }
 
   ionViewDidEnter() {
-    this.loadQuotes();
+    this.loadQuotes(this.searchText);
   }
 
   ngOnDestroy() {}
@@ -136,6 +139,11 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
         : event.target?.value;
 
     console.log('Valor capturado:', val); // Ahora debería mostrar el texto
+
+    // Actualizamos la variable local para que el filtro sea consistente
+    this.searchText = val;
+    // GUARDAMOS en el servicio para que no se pierda al navegar
+    this.cotizacionesService.filterSearchText = val;
 
     // 2. Limpiar la lista para feedback visual inmediato (Skeleton)
     this.appGeneralQuotesGetDtoArray = [];

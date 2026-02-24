@@ -1,0 +1,584 @@
+<ion-header>
+  <ion-toolbar [color]="colorToolbar">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+      <ion-back-button defaultHref="/menu/list-detalle-cotizacion" text=""></ion-back-button>
+    </ion-buttons>
+
+    <ion-title>{{tituloUi}}</ion-title>
+
+    <ion-buttons slot="end">
+      <ion-button *ngIf="!solicitarPrecio" (click)="imprimirCotiza(cotizacion)">
+        <ion-icon slot="icon-only" name="print-outline"></ion-icon>
+      </ion-button>
+
+      <ion-button *ngIf="editable && showLoading" disabled>
+        <ion-icon slot="icon-only" name="sync-outline" class="rotate"></ion-icon>
+      </ion-button>
+      <ion-button *ngIf="editable && !showLoading" (click)="onSave(false)" [disabled]="!form.valid" strong="true">
+        <ion-icon slot="start" name="save-outline"></ion-icon>
+        Guardar
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-progress-bar *ngIf="showLoading" type="indeterminate"></ion-progress-bar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <ion-card *ngIf="uiImageLink !== ''" class="resumen-producto-card ion-margin-bottom">
+    <ion-card-header>
+      <ion-card-title>
+        {{ cotizacion?.cotizacion }} - {{ appProduct?.code || 'Producto' }}
+      </ion-card-title>
+      <ion-card-subtitle>
+        {{ uiNombreProductoInCard }}
+      </ion-card-subtitle>
+    </ion-card-header>
+
+    <ion-card-content>
+      <ion-grid>
+        <ion-row>
+          <ion-col size="6">
+            <ion-text color="medium">
+              <small>Unidad de Venta</small>
+            </ion-text>
+            <p class="ion-margin-top">
+              <strong>{{ descripcionSalesUnit || 'N/A' }}</strong>
+            </p>
+          </ion-col>
+
+          <ion-col size="6" *ngIf="cantidadPorUnidad > 0">
+            <ion-text color="medium">
+              <small>Unidad de Producción</small>
+            </ion-text>
+            <p class="ion-margin-top">
+              <strong>{{ decripcionProductionUnit || 'N/A' }}</strong>
+            </p>
+          </ion-col>
+        </ion-row>
+
+        <ion-row *ngIf="cantidadPorUnidad > 0">
+          <ion-col size="12">
+            <ion-text color="medium">
+              <small>Factor de Conversión</small>
+            </ion-text>
+            <p class="ion-margin-top">
+              <strong>1 {{ decripcionProductionUnit }} = {{ generalService.maskFloat(cantidadPorUnidad, 2) }} {{
+                descripcionSalesUnit }}</strong>
+            </p>
+          </ion-col>
+        </ion-row>
+
+        <ion-row>
+          <ion-col size="6">
+            <ion-text color="medium">
+              <small>Tasa de Cambio (USD/BS)</small>
+            </ion-text>
+            <p class="ion-margin-top">
+              <strong>{{ generalService.maskFloat(uiTasa, 2) }}</strong>
+            </p>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+    </ion-card-content>
+  </ion-card>
+
+  <form [formGroup]="form" novalidate>
+    <ion-card class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="cube-outline" class="ion-margin-end"></ion-icon>
+          1. Información del Producto
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Categoría *</ion-label>
+                <ion-select formControlName="subCategoriaId" [(ngModel)]="subCategoryid"
+                  (ionChange)="onChangeSubCategoriaId($event)" interface="action-sheet"
+                  placeholder="Seleccione una categoría">
+                  <ion-select-option *ngFor="let item of appSubcategoryGetDto" [value]="item.id"
+                    [disabled]="cotizacion?.ordenAnterior > 0">
+                    {{item.description}}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6" *ngIf="subCategoryid !== 2 && operacion === 0">
+              <ion-item>
+                <ion-label position="stacked">Orden Anterior</ion-label>
+                <ion-input formControlName="ordenAnterior" readonly placeholder="N° de orden anterior">
+                </ion-input>
+
+                <ion-buttons slot="end">
+                  <ion-button (click)="onBuscarordenAnterior()">
+                    <ion-icon slot="icon-only" name="search-outline"></ion-icon>
+                  </ion-button>
+                  <ion-button (click)="limpiarOrdenAnterior()" color="danger">
+                    <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                  </ion-button>
+                </ion-buttons>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Descripción Comercial *</ion-label>
+                <ion-textarea rows="2" formControlName="nombreComercialProducto"
+                  placeholder="Ej: Caja de Cartón Corrugado 30x40x20 cm" maxlength="200">
+                </ion-textarea>
+                <ion-note slot="helper" *ngIf="form.get('nombreComercialProducto')?.value">
+                  {{ form.get('nombreComercialProducto')?.value?.length }}/200 caracteres
+                </ion-note>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="8">
+              <ion-item>
+                <ion-label position="stacked">Código Producto</ion-label>
+                <ion-input [value]="appProduct?.code" readonly placeholder="Código del producto">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="4" class="ion-align-self-end">
+              <ion-button expand="block" (click)="onBuscarProducto()" [disabled]="!subCategoryid" color="secondary">
+                <ion-icon slot="start" name="search-outline"></ion-icon>
+                Buscar Producto
+              </ion-button>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="8">
+              <ion-item>
+                <ion-label position="stacked">Unidad de Venta *</ion-label>
+                <ion-input formControlName="unidad" readonly placeholder="Seleccione unidad">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="4" class="ion-align-self-end">
+              <ion-button expand="block" (click)="onBuscarUnidad()" [disabled]="btnUmDisabled" color="secondary">
+                <ion-icon slot="start" name="search-outline"></ion-icon>
+                Buscar Unidad
+              </ion-button>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="operacion === 1 && mostrarEnDesarrollo && subCategoryid !== 2">
+            <ion-col size="12">
+              <ion-button expand="block" (click)="onBuscarCaracteristicas()" color="tertiary">
+                <ion-icon slot="start" name="settings-outline"></ion-icon>
+                Configurar Características
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="appProduct && requiereDatosEntrada" class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="resize-outline" class="ion-margin-end"></ion-icon>
+          2. Cantidad y Medidas
+        </ion-card-title>
+        <ion-card-subtitle>
+          Ingrese las medidas para calcular la cantidad total
+        </ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">Medida Básica (cm) *</ion-label>
+                <ion-input inputmode="numeric" formControlName="medidaBasica" type="text" placeholder="0.00"
+                  (ionInput)="medidaBasicaChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">Medida Opuesta (cm) *</ion-label>
+                <ion-input inputmode="numeric" formControlName="medidaOpuesta" type="text" placeholder="0.00"
+                  (ionInput)="medidaOpuestaChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">
+                  Cantidad Solicitada ({{ descripcionSalesUnit }}) *
+                </ion-label>
+                <ion-input inputmode="numeric" formControlName="cantidadSolicitada" type="number" placeholder="0"
+                  (ionInput)="cantidadSolicitadaChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">
+                  Total ({{ decripcionProductionUnit }})
+                </ion-label>
+                <ion-input formControlName="cantidad" readonly placeholder="0.000">
+                </ion-input>
+              </ion-item>
+
+              <ion-note
+                *ngIf="appProduct?.cantidadMinima > 0 && (form.get('cantidad')?.value || 0) < appProduct.cantidadMinima"
+                color="danger" class="ion-padding-start">
+                <ion-icon name="warning-outline"></ion-icon>
+                La cantidad mínima es {{ appProduct.cantidadMinima }} {{ decripcionProductionUnit }}
+              </ion-note>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="appProduct && !requiereDatosEntrada" class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="calculator-outline" class="ion-margin-end"></ion-icon>
+          2. Cantidad
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">
+                  Cantidad Solicitada ({{ descripcionSalesUnit }}) *
+                </ion-label>
+                <ion-input inputmode="numeric" formControlName="cantidadSolicitada" type="number" placeholder="0"
+                  (ionInput)="cantidadSolicitadaChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="floating">
+                  Total ({{ decripcionProductionUnit }})
+                </ion-label>
+                <ion-input formControlName="cantidad" readonly placeholder="0.000">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="pricetag-outline" class="ion-margin-end"></ion-icon>
+          3. Precios
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Condición de Pago *</ion-label>
+                <ion-select formControlName="condicionPago" [(ngModel)]="condicionPagoCodigo"
+                  (ionChange)="onChangeCondicionPago($event)" interface="action-sheet"
+                  placeholder="Seleccione condición">
+                  <ion-select-option *ngFor="let item of listCondicionPagoDto" [value]="item.codigo">
+                    {{item.descripcion}}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Días de Entrega *</ion-label>
+                <ion-input type="number" formControlName="diasEntrega" min="1" placeholder="0">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row class="ion-margin-top">
+            <ion-col size="12">
+              <ion-text color="medium">
+                <p class="ion-no-margin">
+                  <small>Precio de Lista (por {{ decripcionProductionUnit }})</small>
+                </p>
+              </ion-text>
+              <h2 class="ion-no-margin ion-margin-bottom">
+                <strong>$ {{ generalService.maskFloat(newPrecioMasFlete, 2) }}</strong>
+              </h2>
+
+              <ion-text *ngIf="concesionString" [color]="concesion < 0 ? 'success' : 'danger'">
+                <p class="ion-no-margin">
+                  <small>{{ concesionString }}</small>
+                </p>
+              </ion-text>
+            </ion-col>
+          </ion-row>
+
+          <ion-row class="ion-margin-top">
+            <ion-col size="12" size-md="6" *ngIf="!isBs">
+              <ion-item>
+                <ion-label position="floating">Precio Unitario (USD) *</ion-label>
+                <ion-input inputmode="numeric" formControlName="precioUsd" type="number" placeholder="0.00"
+                  (ionInput)="precioUsdChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6" *ngIf="isBs">
+              <ion-item>
+                <ion-label position="floating">Precio Unitario (BS) *</ion-label>
+                <ion-input inputmode="numeric" formControlName="precio" type="number" placeholder="0.00"
+                  (ionInput)="precioChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6" *ngIf="isBs">
+              <ion-item>
+                <ion-label position="floating">Precio Unitario (USD) *</ion-label>
+                <ion-input inputmode="numeric" formControlName="precioUsd" type="number" placeholder="0.00"
+                  (ionInput)="precioUsdChanged($event.target.value)">
+                </ion-input>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row class="ion-margin-top totals-row">
+            <ion-col size="6" size-md="3" offset-md="6">
+              <ion-card class="total-card">
+                <ion-card-content class="ion-text-center">
+                  <ion-text color="medium">
+                    <small>Total USD</small>
+                  </ion-text>
+                  <h3 class="ion-margin-top">
+                    <strong>$ {{ generalService.maskFloat(form.get('totalUsd')?.value || 0, 2) }}</strong>
+                  </h3>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+
+            <ion-col size="6" size-md="3" *ngIf="isBs">
+              <ion-card class="total-card">
+                <ion-card-content class="ion-text-center">
+                  <ion-text color="medium">
+                    <small>Total BS</small>
+                  </ion-text>
+                  <h3 class="ion-margin-top">
+                    <strong>Bs. {{ generalService.maskFloat(form.get('total')?.value || 0, 2) }}</strong>
+                  </h3>
+                </ion-card-content>
+              </ion-card>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="appProduct && appProduct.appSubCategoryId === 9" class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="pricetags-outline" class="ion-margin-end"></ion-icon>
+          4. Especificaciones Etiquetas Prime
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Salida *</ion-label>
+                <ion-select formControlName="salida" (ionChange)="onChangeSalida($event)" interface="action-sheet"
+                  placeholder="Seleccione salida">
+                  <ion-select-option *ngFor="let item of salidas" [value]="item">
+                    {{item}}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+
+            <ion-col size="12" size-md="6">
+              <ion-item>
+                <ion-label position="stacked">Forma *</ion-label>
+                <ion-select formControlName="forma" (ionChange)="onChangeTipoForma($event)" interface="action-sheet"
+                  placeholder="Seleccione forma">
+                  <ion-select-option *ngFor="let item of tipoForma" [value]="item">
+                    {{item}}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Presentación *</ion-label>
+                <ion-textarea formControlName="presentacion" rows="2" maxlength="200"
+                  placeholder="Describa la presentación">
+                </ion-textarea>
+                <ion-note slot="helper">
+                  Mínimo 5 caracteres: {{ form.get('presentacion')?.value?.length || 0 }}/200
+                </ion-note>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card class="ion-margin-bottom">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="chatbubble-outline" class="ion-margin-end"></ion-icon>
+          5. Observaciones
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Observaciones Generales</ion-label>
+                <ion-textarea formControlName="observaciones" rows="3" maxlength="200"
+                  placeholder="Comentarios adicionales...">
+                </ion-textarea>
+                <ion-note slot="helper">
+                  {{ form.get('observaciones')?.value?.length || 0 }}/200
+                </ion-note>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="item && item.mensajeSolicitarPrecio">
+            <ion-col size="12">
+              <ion-item>
+                <ion-label position="stacked">Mensaje de Solicitud</ion-label>
+                <ion-textarea formControlName="mensajeSolicitarPrecio" rows="2" maxlength="200"
+                  placeholder="Mensaje para solicitud de precio">
+                </ion-textarea>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="item?.statusAprobacionDto" class="ion-margin-bottom"
+      [color]="item.statusAprobacionDto.statusString === 'APROBADO' ? 'success' : 'warning'">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="shield-checkmark-outline" class="ion-margin-end"></ion-icon>
+          Estado de Aprobación
+        </ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12">
+              <ion-text>
+                <h3 class="ion-no-margin">{{ item.statusAprobacionDto.statusString }}</h3>
+              </ion-text>
+
+              <ion-text *ngIf="item.statusAprobacionDto.valorVentaAprobarUsd > 0">
+                <p class="ion-margin-top">
+                  <strong>Precio Aprobado:</strong>
+                  $ {{ generalService.maskFloat(item.statusAprobacionDto.valorVentaAprobarUsd, 2) }}
+                </p>
+              </ion-text>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="!solicitarPrecio && newPrecioMasFlete < (form.get('precioUsd')?.value || 0) &&
+                          item.statusAprobacionDto.statusString === 'APROBADO'">
+            <ion-col size="12">
+              <ion-button expand="block" color="danger" [disabled]="_btnCalculadoraDisabled"
+                (click)="enviarAprobacion()">
+                <ion-icon slot="start" name="send-outline"></ion-icon>
+                Solicitar Nueva Aprobación
+              </ion-button>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card *ngIf="solicitarPrecio" class="ion-margin-bottom" color="warning">
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="warning-outline" class="ion-margin-end"></ion-icon>
+          ⚠️ Se Requiere Aprobación
+        </ion-card-title>
+        <ion-card-subtitle>
+          Complete los detalles para enviar la solicitud
+        </ion-card-subtitle>
+      </ion-card-header>
+
+      <ion-card-content>
+        <ion-grid>
+          <ion-row>
+            <ion-col size="12">
+              <ion-item color="warning">
+                <ion-label position="stacked">Motivo de la Solicitud *</ion-label>
+                <ion-textarea formControlName="obsSolicitud" rows="4"
+                  placeholder="Explique el motivo de la solicitud...">
+                </ion-textarea>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+
+          <ion-row>
+            <ion-col size="12">
+              <ion-button expand="block" color="danger" [disabled]="!form.get('obsSolicitud')?.value"
+                (click)="enviarAprobacion()">
+                <ion-icon slot="start" name="send-outline"></ion-icon>
+                {{ mensajeBotonSolicitarPrecio || 'Enviar Solicitud y Guardar' }}
+              </ion-button>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="item?.statusAprobacionDto && item.statusAprobacionDto.valorVentaAprobarUsd > 0">
+            <ion-col size="12">
+              <ion-item color="warning" lines="none">
+                <ion-label>
+                  <p>Precio Aprobado Anteriormente:</p>
+                  <h3>$ {{ generalService.maskFloat(item.statusAprobacionDto.valorVentaAprobarUsd, 2) }}</h3>
+                </ion-label>
+              </ion-item>
+            </ion-col>
+          </ion-row>
+        </ion-grid>
+      </ion-card-content>
+    </ion-card>
+  </form>
+</ion-content>

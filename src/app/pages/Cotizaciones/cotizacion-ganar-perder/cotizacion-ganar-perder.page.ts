@@ -116,17 +116,14 @@ export class CotizacionGanarPerderPage implements OnInit {
       );
       //console.log('En el onini this.appDetailQuotesGetDto', this.appDetailQuotesGetDto);
 
-      console.log(
-        'this.cotizacion.appDetailQuotesGetDto',
-        this.cotizacion.appDetailQuotesGetDto,
-      );
       if (
         this.appDetailQuotesGetDto != null &&
         this.appDetailQuotesGetDto.length > 0
       ) {
         if (
           this.appDetailQuotesGetDto[0].tieneTintasCargadas != null &&
-          !this.appDetailQuotesGetDto[0].tieneTintasCargadas
+          !this.appDetailQuotesGetDto[0].tieneTintasCargadas &&
+          this.appDetailQuotesGetDto[0].appProductsGetDto.appSubCategoryId != 2
         ) {
           this.mensaje = 'Debe completar las tintas del producto';
         }
@@ -176,6 +173,10 @@ export class CotizacionGanarPerderPage implements OnInit {
     this.cotizacionesService
       .GetAllGeneralCotizacion(this.appGeneralQuotesQueryFilter)
       .subscribe((listCotizacionesResult) => {
+        console.log(
+          'Lista de cotizaciones en ganar oerder listCotizacionesResult buscarCotizacion: ',
+          listCotizacionesResult,
+        );
         this.cotizacionesService.allCotizaciones$.next(
           listCotizacionesResult.data,
         );

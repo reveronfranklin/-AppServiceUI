@@ -33,6 +33,7 @@ import { SapDepartamentoContactoGetDto } from '../../models/sap-departamento-con
 import { ClienteService } from '../../services/cliente.service';
 import { ProductoService } from '../../services/producto.service';
 import { ConfiguracionService } from 'src/app/services/configuracion.service';
+import { CotizacionesListService } from '../../services/cotizaciones/cotizaciones-list.service';
 
 @Component({
   selector: 'app-main',
@@ -84,7 +85,8 @@ export class MainPage implements OnInit {
     public loginService: LoginService,
     private clienteService: ClienteService,
     private productoService: ProductoService,
-    private configuracionService: ConfiguracionService
+    private configuracionService: ConfiguracionService,
+    private cotizacionesListService: CotizacionesListService,
   ) {
     this.usuario = this.gs.GetUsuario();
   }
@@ -127,7 +129,7 @@ export class MainPage implements OnInit {
         this.mtrOficinaDto = json;
         localStorage.setItem(
           'listOficinas',
-          JSON.stringify(this.mtrOficinaDto)
+          JSON.stringify(this.mtrOficinaDto),
         );
       });
 
@@ -143,11 +145,11 @@ export class MainPage implements OnInit {
         this.mtrVendedoresDto = resp.data;
         console.log(
           'Lista de Vendedores en cargarCombos',
-          this.mtrVendedoresDto
+          this.mtrVendedoresDto,
         );
         localStorage.setItem(
           'listVendedores',
-          JSON.stringify(this.mtrVendedoresDto)
+          JSON.stringify(this.mtrVendedoresDto),
         );
       });
 
@@ -163,7 +165,7 @@ export class MainPage implements OnInit {
         this.listMtrTipoMonedasDto = json;
         localStorage.setItem(
           'listMoneda',
-          JSON.stringify(this.listMtrTipoMonedasDto)
+          JSON.stringify(this.listMtrTipoMonedasDto),
         );
       });
 
@@ -186,7 +188,7 @@ export class MainPage implements OnInit {
         localStorage.setItem('listCobTipoTransaccion', '');
         localStorage.setItem(
           'listCobTipoTransaccion',
-          JSON.stringify(this.listCobTipoTransaccionDto)
+          JSON.stringify(this.listCobTipoTransaccionDto),
         );
       });
 
@@ -205,7 +207,7 @@ export class MainPage implements OnInit {
         localStorage.setItem('listMtrBanco', '');
         localStorage.setItem(
           'listMtrBanco',
-          JSON.stringify(this.listMtrBancosDto)
+          JSON.stringify(this.listMtrBancosDto),
         );
       });
 
@@ -222,7 +224,7 @@ export class MainPage implements OnInit {
         this.listCobTransaccionesDto = resp.data;
         localStorage.setItem(
           'listCobTransacciones',
-          JSON.stringify(this.listCobTransaccionesDto)
+          JSON.stringify(this.listCobTransaccionesDto),
         );
       });
 
@@ -239,7 +241,7 @@ export class MainPage implements OnInit {
         this.listCobTransaccionesImpuestoDto = resp.data;
         localStorage.setItem(
           'listCobTransaccionesRetencion',
-          JSON.stringify(this.listCobTransaccionesImpuestoDto)
+          JSON.stringify(this.listCobTransaccionesImpuestoDto),
         );
       });
 
@@ -257,7 +259,7 @@ export class MainPage implements OnInit {
         this.listOfdTipoDocumentoDto = resp.data;
         localStorage.setItem(
           'listTipoDocumento',
-          JSON.stringify(this.listOfdTipoDocumentoDto)
+          JSON.stringify(this.listOfdTipoDocumentoDto),
         );
       });
 
@@ -274,12 +276,12 @@ export class MainPage implements OnInit {
           this.listTratamientoDto = respTratamiento;
           localStorage.setItem(
             'listTratamientoDto',
-            JSON.stringify(this.listTratamientoDto)
+            JSON.stringify(this.listTratamientoDto),
           );
         },
         (error) => {
           console.log('en el error list tratamiento: ', error);
-        }
+        },
       );
 
     this.clienteService
@@ -289,12 +291,12 @@ export class MainPage implements OnInit {
           this.listSapCargoContacto = respCargoContacto;
           localStorage.setItem(
             'listSapCargoContacto',
-            JSON.stringify(this.listSapCargoContacto)
+            JSON.stringify(this.listSapCargoContacto),
           );
         },
         (error) => {
           console.log('en el error list cargo: ', error);
-        }
+        },
       );
 
     this.clienteService
@@ -304,12 +306,12 @@ export class MainPage implements OnInit {
           this.listSapDepartamentoContacto = respDepartamentoContacto;
           localStorage.setItem(
             'listSapDepartamentoContacto',
-            JSON.stringify(this.listSapDepartamentoContacto)
+            JSON.stringify(this.listSapDepartamentoContacto),
           );
         },
         (error) => {
           console.log('en el error list departamento: ', error);
-        }
+        },
       );
 
     this.clienteService
@@ -319,12 +321,12 @@ export class MainPage implements OnInit {
           this.listsapPoderContactoGetDto = respPoderContacto;
           localStorage.setItem(
             'listsapPoderContactoGetDto',
-            JSON.stringify(this.listsapPoderContactoGetDto)
+            JSON.stringify(this.listsapPoderContactoGetDto),
           );
         },
         (error) => {
           console.log('en el error list departamento: ', error);
-        }
+        },
       );
 
     console.log('Fin Cargar combos', Date.now());
@@ -333,6 +335,7 @@ export class MainPage implements OnInit {
   // eslint-disable-next-line @typescript-eslint/member-ordering
   onClickExit() {
     localStorage.clear();
+    this.cotizacionesListService.filterSearchText = '';
     this.gs.KillUsuario();
     this.router.navigate(['/login']);
   }

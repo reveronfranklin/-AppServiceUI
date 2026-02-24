@@ -193,12 +193,11 @@ export class EditPage implements OnInit {
     this.cotizacionesListService.cotizacion$.subscribe((cot) => {
       this.cotizacion = cot;
     });
-    console.log('editPage ngOnInit', this.cotizacion);
+
     this.salidas = ['A', 'B', 'C', 'D'];
     this.tipoForma = ['Regular', 'Irregular'];
     this.mostrarEnDesarrollo = true;
     this.subjectKeyUp.pipe(debounceTime(1000)).subscribe((d) => {
-      console.log('recalculando >>>>>>>> :', d);
       this.onRecalcular(d);
     });
 
@@ -224,7 +223,6 @@ export class EditPage implements OnInit {
       .GetAllCondicionPago(this.condicionPagoQueryFilter)
       .subscribe((resp) => {
         this.listCondicionPagoDto = resp.data;
-        console.log('this.condicionPagoDto', this.listCondicionPagoDto);
       });
 
     const subcategoryAll = JSON.parse(localStorage.getItem('listSubcategoria'));
@@ -261,17 +259,14 @@ export class EditPage implements OnInit {
     if (this.operacion === 1) {
       //Modo Editar
       this.item = this.router.getCurrentNavigation().extras.state.item;
-      console.log(
-        'producto recibido',
-        this.router.getCurrentNavigation().extras.state.producto,
-      );
-      this.item.appProductsGetDto =
-        this.router.getCurrentNavigation().extras.state.producto;
+      console.log('this.item recibido', this.item);
 
-      this.appProduct =
-        this.router.getCurrentNavigation().extras.state.producto;
-      this.item.appProductsGetDto = this.appProduct;
-      console.log(this.item.appProductsGetDto);
+      //this.item.appProductsGetDto =this.router.getCurrentNavigation().extras.state.producto;
+
+      this.appProduct = this.item.appProductsGetDto;
+      //this.router.getCurrentNavigation().extras.state.producto;t
+      // his.item.appProductsGetDto = this.appProduct;
+
       //this.appProduct = this.item.appProductsGetDto;
       this.calculoId = this.item.calculoId;
       this.setColorToolbar();
@@ -296,22 +291,14 @@ export class EditPage implements OnInit {
   }
 
   ionViewDidEnter() {
-    /*this.cotizacionesListService.cotizacion$.subscribe((dat) => {
-      this.cotizacion = dat;
-      console.log('this.cotizacion', this.cotizacion);
-      this.showData();
-      this.setMostrarOrdenAnterior();
-    });*/
     this.cotizacionesListService.cotizacion$.subscribe((cot) => {
       this.cotizacion = cot;
     });
-    console.log('cotizacion en ionViewDidEnter', this.cotizacion);
+
     this.showData();
     this.setMostrarOrdenAnterior();
   }
   onChangeCondicionPago(event) {
-    //this.generalCotizacion.idCondPago = event.target.value;
-    console.log('onChangeCondicionPago', event);
     this.condicionPagoDto = this.listCondicionPagoDto.find(
       (x) => x.codigo === this.condicionPagoCodigo,
     );
@@ -319,10 +306,6 @@ export class EditPage implements OnInit {
 
     this.form.get('condicionPago').setValue(event.target.value);
     this.subjectKeyUp.next('onChangeCondicionPago');
-    console.log(
-      'this.condicionPagoCodigo seleccionada',
-      this.condicionPagoCodigo,
-    );
   }
   setMostrarOrdenAnterior() {
     this.mostarOrdenAnterior = false;
@@ -463,7 +446,7 @@ export class EditPage implements OnInit {
         this.flete =
           (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
       }
-      console.log('asignando precioMasFletet en operacion=1');
+
       this.decripcionProductionUnit =
         this.item.appProductsGetDto.productionUnitGetDto.description1;
       this.descripcionSalesUnit = this.item.appUnitsGetDto.description1;
@@ -593,25 +576,21 @@ export class EditPage implements OnInit {
   }
 
   showData() {
-    console.log('this.item en showData', this.cotizacion);
-    console.log('item en showData', this.item);
-    console.log('this.operacion en showData', this.operacion);
-
     var precioDto: PrecioDto = {
       unitPriceBaseProduction: this.unitPriceBaseProduction,
       precioMasFlete: 0,
-      calculoId: 0,
+      calculoId: this.item.calculoId,
       flete: this.flete,
       porcFlete: this.cotizacion.porcFlete,
       precioMaximo: 0,
       precioMaximoMasFlete: 0,
-      porDebajoDeCantidadMinima: false,
+      porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
     };
     localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
 
     if (this.operacion === 1) {
       this.form.get('estimada').setValue(this.item.estimada);
-      console.log('this.item en this.operacion === 1', this.item);
+
       if (this.item.mensajeSolicitarPrecio) {
         this.form
           .get('mensajeSolicitarPrecio')
@@ -803,13 +782,6 @@ export class EditPage implements OnInit {
       this.unitPriceBaseProduction = this.item?.unitPriceBaseProduction ?? 0; // Valor por defecto (0 o el que necesites)
       this.flete = this.item?.flete ?? 0; // Valor por defecto (0 o el que necesites)
     }
-    console.log('AppStatusQuoteGetDto', this.item.appStatusQuoteGetDto);
-    /*if (!this.item.appStatusQuoteGetDto.flagModificar) {
-      this.unitPriceBaseProduction = this.item.unitPriceBaseProduction;
-      this.flete = this.item.flete;
-    }*/
-    //this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-    //this.precioMasFlete = +this.precioMasFlete.toFixed(2);
   }
 
   //Insert - ok
@@ -862,7 +834,8 @@ export class EditPage implements OnInit {
     this.detailCreateDto.forma = this.form.get('forma').value;
     this.detailCreateDto.salida = this.form.get('salida').value;
     this.detailCreateDto.presentacion = this.form.get('presentacion').value;
-
+    const user = this.generalService.GetUsuario();
+    this.detailCreateDto.usuarioConectado = user.user;
     this.showLoading = true;
 
     this.mensaje = 'Guardando Cotizacion';
@@ -872,6 +845,7 @@ export class EditPage implements OnInit {
         if (result.meta.isValid) {
           this.appGeneralQuotesGetDto = result.data[0];
           this.cotizacion = result.data[0];
+          console.log('Result al crear', result.data);
 
           //capturo el registro insertado y lo asigno a 'item' (requerido en la calculadora)
           this.item = this.appGeneralQuotesGetDto.appDetailQuotesGetDto[0];
@@ -966,7 +940,6 @@ export class EditPage implements OnInit {
 
     this.showLoading = true;
     this.mensaje = 'Guardando Cotizacion';
-    console.log('detailUpdateDto', this.detailUpdateDto);
 
     this.cotizacionesListService
       .UpdateDetalleCotizacion(this.detailUpdateDto)
@@ -980,7 +953,7 @@ export class EditPage implements OnInit {
           );
           this.showLoading = false;
           this.mensaje = '';
-          console.log('result', result);
+
           if (this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0) {
             this.generalService.presentToastLong(
               'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
@@ -1070,7 +1043,6 @@ export class EditPage implements OnInit {
 
       this.showLoading = true;
       this.mensaje = 'Guardando Cotizacion';
-      console.log('detailUpdateDto', this.detailUpdateDto);
     } catch (error) {
       // Manejo de errores en la asignación de datos (p. ej., si this.form.get('algo') falla)
       console.error(
@@ -1093,7 +1065,6 @@ export class EditPage implements OnInit {
         next: (result) => {
           if (result.meta.isValid) {
             // Recibo cotización actualizada desde la api
-            console.log('result', result);
             this.appGeneralQuotesGetDto = result.data[0];
 
             this.cotizacionesListService.cotizacion$.next(
@@ -1101,7 +1072,6 @@ export class EditPage implements OnInit {
             );
             this.showLoading = false;
             this.mensaje = '';
-            console.log('result', result);
 
             // Mensaje de éxito con manejo especial para la solicitud de precio
             if (
@@ -1383,27 +1353,23 @@ export class EditPage implements OnInit {
       this.porDebajoDeCantidadMinima = false;
       // b) O, podrías simplemente retornar la función para evitar ejecutar el resto del código
       // return;
-    } else {
-      // 2. Si el valor existe, proceder a parsearlo
-      const precio: PrecioDto = JSON.parse(precioString);
-      console.log('precio-mas-flete linea 1389>>>>>>', precio);
-
-      // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
-      this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
-      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
-      this.flete = precio.flete ?? 0;
-      this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
-      this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
-      this.precioMaximo = precio.precioMaximo ?? 0;
-      this.porDebajoDeCantidadMinima =
-        precio.porDebajoDeCantidadMinima ?? false;
     }
+    // 2. Si el valor existe, proceder a parsearlo
+    const precio: PrecioDto = JSON.parse(precioString);
+    console.log('precio en setPrecioMasFlete', precio);
+    // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
+    this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
+    this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+    this.flete = precio.flete ?? 0;
+    this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
+    this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
+    this.precioMaximo = precio.precioMaximo ?? 0;
+    this.porDebajoDeCantidadMinima = precio.porDebajoDeCantidadMinima ?? false;
 
     // El resto de tu lógica que depende de 'this.item' se ejecuta después de
     // que las variables de precio se hayan inicializado (ya sea desde localStorage o con valores por defecto)
 
     if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
-      console.log('en la linea 1406');
       this.unitPriceBaseProduction =
         this.item.statusAprobacionDto.valorVentaAprobarUsd;
       this.newPrecioMasFlete =
@@ -1418,12 +1384,11 @@ export class EditPage implements OnInit {
         this.newPrecioMasFlete = 0;
         this.flete = 0;
         this.unitPriceBaseProduction = 0;
-        this.calculoId = 0;
+        this.calculoId = precio.calculoId ?? 0;
         this.precioMaximo = 0;
       }
     }
 
-    console.log('item>>>>>>>>>>', this.item);
     if (this.item.idEstatus >= 5) {
       ///const precio: PrecioDto = JSON.parse(precioString); s
 
@@ -1439,9 +1404,7 @@ export class EditPage implements OnInit {
         a,
         b,
       );
-      console.log(a, b, objetivo);
-      console.log('resultado', resultado);
-      console.log('item', this.item);
+
       this.calculoId = this.item?.calculoId ?? 0;
       this.unitPriceBaseProduction = resultado;
       this.flete = this.item?.flete ?? 0;
@@ -1457,7 +1420,7 @@ export class EditPage implements OnInit {
     const precio: PrecioDto = JSON.parse(
       localStorage.getItem('precio-mas-flete'),
     );
-    console.log('precio-mas-flete', precio);
+
     this.newPrecioMasFlete = precio.precioMasFlete;
     this.flete = precio.flete;
     this.unitPriceBaseProduction = precio.unitPriceBaseProduction;
@@ -1528,36 +1491,22 @@ export class EditPage implements OnInit {
         this.item.statusAprobacionDto.aprobado &&
         this.item.statusAprobacionDto.flagCerrado
       ) {
-        console.log('linea 1194');
         this.requiereAprobacionPrecio = false;
         this.colorToolbar = 'success';
         this.solicitarPrecio = false;
         this.mensajeBotonSolicitarPrecio = '';
       } else {
-        /*if(this.appProduct.tipoCalculo === 4){
-                  cantidad= this.form.get('cantidadConvertidaAlternativa').value;
-                }*/
-        console.log('linea 1203');
-        console.log(this.variables.precioUsd);
-        console.log({
-          newPrecioMasFlete: this.newPrecioMasFlete,
-          precioUsd: this.variables.precioUsd,
-          porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
-        });
-
         if (
           this.newPrecioMasFlete > this.variables.precioUsd ||
           this.appProduct.requiereEstimacion === true ||
           this.porDebajoDeCantidadMinima === true
         ) {
-          console.log('linea 12010');
           this.requiereAprobacionPrecio = true;
           this.colorToolbar = 'danger';
           this.solicitarPrecio = true;
           this.mensajeBotonSolicitarPrecio =
             'Enviar Aprobación Por Precio y Salvar';
         } else {
-          console.log('linea 1217');
           this.requiereAprobacionPrecio = false;
           this.colorToolbar = 'primary';
           this.solicitarPrecio = false;
@@ -1624,9 +1573,6 @@ export class EditPage implements OnInit {
     if (data) {
       //UI
 
-      console.log('Producto seleccionado', this.appProduct);
-      console.log(this.form.get('nombreComercialProducto').value);
-
       this.form.get('descripcionProducto').setValue(data.description);
       if (
         this.form.get('nombreComercialProducto').value === '' ||
@@ -1636,6 +1582,7 @@ export class EditPage implements OnInit {
       }
       this.form.get('producto').setValue(data.code);
       this.appProduct = data.appProduct;
+
       this.item.appProductsGetDto = this.appProduct;
       this.uiIdProducto = data.id;
       this.uiImageLink = data.link;
@@ -1725,7 +1672,7 @@ export class EditPage implements OnInit {
 
       //Propiedades
       this.appProduct = data.appProduct;
-      console.log('Producto seleccionado++++++++', this.appProduct);
+
       this.item.appProductsGetDto = this.appProduct;
       this.uiIdProducto = data.id;
       this.uiImageLink = data.link;
@@ -1754,8 +1701,6 @@ export class EditPage implements OnInit {
       this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
       this.descripcionSalesUnit =
         this.appProductConversionGetDto.appUnitsAlternativaDescription;
-
-      console.log(this.uiIdUnidad);
 
       //Verifico si el id de producto seleccionado ya existe en el array de detalle cotizaciones
       //caso +, asigno dicho elemento a this.item y es todo
@@ -1786,7 +1731,6 @@ export class EditPage implements OnInit {
 
   //Buscar unidad de medfappProductida OK
   async onBuscarUnidadConEntradas() {
-    console.log('onBuscarUnidadConEntradas');
     const modal = await this.modalCtrl.create({
       component: BuscadorUnidadesPage,
       componentProps: {
@@ -1815,7 +1759,6 @@ export class EditPage implements OnInit {
     }
   }
   async onBuscarUnidad() {
-    console.log('onBuscarUnidad');
     const modal = await this.modalCtrl.create({
       component: BuscadorUnidadesComponent,
       componentProps: {
@@ -1844,11 +1787,7 @@ export class EditPage implements OnInit {
 
       //propiedades
       this.uiIdUnidad = data.appProductConversion.appUnitsIdAlternativa;
-      console.log(
-        'this.appProductConversionGetDto',
-        this.appProductConversionGetDto,
-      );
-      console.log('this.uiIdUnidad ', this.uiIdUnidad);
+
       //para la calculadora
       this.dtoCalculadora.appUnitIdSince =
         data.appProductConversion.appUnitsIdAlternativa;
@@ -1911,19 +1850,13 @@ export class EditPage implements OnInit {
       condicionDePago: this.form.get('condicionPago').value,
       ordenAnterior: this.form.get('ordenAnterior').value,
     };
-    console.log(
-      'filter buscando precio....Etiquetas Digitales y prime',
-      filter,
-    );
+
     this.buscandoPrecio = true;
     this.mensaje = 'Buscando precio........';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
       this.mensaje = '';
-      console.log(
-        'Respuesta desde GetPrice en tipo 4 etiquetas digitales y 6 prime',
-        resp,
-      );
+
       var precioDto: PrecioDto = {
         unitPriceBaseProduction: resp.data.precio,
         precioMasFlete: resp.data.precioMasFlete,
@@ -1948,7 +1881,6 @@ export class EditPage implements OnInit {
         this.appProduct.requiereEstimacion === true ||
         resp.data.porDebajoDeCantidadMinima === true
       ) {
-        console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
         this.unitPriceBaseProduction = 0.00000000001;
         this.precioMaximo = 0;
         this.newPrecioMasFlete = 0;
@@ -1958,13 +1890,11 @@ export class EditPage implements OnInit {
         this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
 
         if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-          console.log('TIENE PRECIO ESTIMACION');
           this.unitPriceBaseProduction =
             this.item.statusAprobacionDto.precioEstimacion;
           this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
         }
       } else {
-        console.log('linea 1600');
         this.flete = resp.data.flete;
         this.newPrecioMasFlete = resp.data.precioMasFlete;
 
@@ -2015,7 +1945,7 @@ export class EditPage implements OnInit {
           .setValue(
             this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
-        console.log('totalUsd', this.form.get('totalUsd').value);
+
         if (this.tasa > 0) {
           if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
             this.ultimoPrecioUsd = this.form.get('precioUsd').value;
@@ -2090,7 +2020,6 @@ export class EditPage implements OnInit {
       this.unitPriceBaseProduction = precio;
     }
     if (this.appProduct.requiereEstimacion === true) {
-      console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
       this.unitPriceBaseProduction = 0;
       this.precioMaximo = 0;
       if (this.item.statusAprobacionDto.precioEstimacion > 0) {
@@ -2166,7 +2095,8 @@ export class EditPage implements OnInit {
     //this.setColorToolbar();
   }
   recalculoPorRango() {
-    this.mensaje = 'Buscando precio por rango ***........';
+    this.mensaje = 'Buscando precio por rango ***........ Linea 2164';
+    console.log(this.mensaje);
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
       this.form.get('cantidadSolicitada').value,
@@ -2186,6 +2116,7 @@ export class EditPage implements OnInit {
     };
     const longitud = this.decimalCount(this.form.get('cantidad').value);
     this.longituDecimal = longitud.toString();
+
     const precio = this.buscarPrecioPorRango(
       this.appPriceDto,
       this.form.get('cantidad').value,
@@ -2195,17 +2126,17 @@ export class EditPage implements OnInit {
       this.form.get('cantidad').value,
     );
 
-    this.item.unitPriceBaseProduction = precio;
-    precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
+    this.item.unitPriceBaseProduction =
+      precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
 
     this.unitPriceBaseProduction =
       precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
+
     this.precioMaximo =
       this.precioMaximo +
       (this.precioMaximo * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
 
     if (this.appProduct.requiereEstimacion === true) {
-      console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
       this.unitPriceBaseProduction = 0;
       this.precioMaximo = 0;
       if (this.item.statusAprobacionDto.precioEstimacion > 0) {
@@ -2220,13 +2151,16 @@ export class EditPage implements OnInit {
     if (this.appProduct.porcFlete > 0) {
       porcFlete = this.appProduct.porcFlete;
     }
-
+    console.log('appProduct', this.appProduct);
+    console.log('porcFlete cotizacion', this.cotizacion.porcFlete);
+    console.log('porcFlete Producto', this.appProduct.porcFlete);
+    console.log('porcFlete', porcFlete);
     this.flete = (this.unitPriceBaseProduction * porcFlete) / 100;
-    console.log('this.flete>>>>>', this.flete);
 
+    this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete;
     var precioDto: PrecioDto = {
       unitPriceBaseProduction: this.unitPriceBaseProduction,
-      precioMasFlete: this.unitPriceBaseProduction + this.flete,
+      precioMasFlete: this.newPrecioMasFlete,
       calculoId: 0,
       flete: this.flete,
       porcFlete: porcFlete,
@@ -2327,17 +2261,11 @@ export class EditPage implements OnInit {
 
     this.buscandoPrecio = true;
     this.mensaje = 'Buscando precio ........';
-    console.log('Buscando precio en recalculoPrecioPorProductoCantidad');
-    console.log('filter en buscar cantidad producto', filter);
+
     await this.productoService.getPrice(filter).subscribe((resp) => {
-      console.log('resp en busqueda por producto cantidad', resp);
-      console.log(
-        'Producto es Estimacion:',
-        this.appProduct.requiereEstimacion,
-      );
       this.buscandoPrecio = false;
       this.mensaje = '';
-      console.log('resp.data.precio', resp.data);
+
       this.calculoId = resp.data.calculoId;
       const precio = resp.data.precio;
       this.unitPriceBaseProduction = precio;
@@ -2456,7 +2384,6 @@ export class EditPage implements OnInit {
   }
 
   async recalculoPrecioPorProductoCantidadRollo() {
-    console.log('recalculoPrecioPorProductoCantidadRollo');
     this.form.get('cantidad').setValue(0);
 
     const filter = {
@@ -2467,13 +2394,13 @@ export class EditPage implements OnInit {
       unidad: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
     };
-    console.log('filter buscando precio rollo', filter);
+
     this.buscandoPrecio = true;
     this.mensaje = 'Buscando precio por rollo........';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
       this.mensaje = '';
-      console.log('Respuesta desde GetPrice', resp);
+
       this.calculoId = resp.data.calculoId;
       const precio = resp.data.precio;
       this.unitPriceBaseProduction = precio;
@@ -2498,7 +2425,6 @@ export class EditPage implements OnInit {
         this.appProduct.requiereEstimacion === true ||
         resp.data.porDebajoDeCantidadMinima === true
       ) {
-        console.log('Estatus Aprobacion', this.item.statusAprobacionDto);
         this.unitPriceBaseProduction = 0;
         this.precioMaximo = 0;
         this.flete = 0;
@@ -2506,16 +2432,16 @@ export class EditPage implements OnInit {
         var precioDto: PrecioDto = {
           unitPriceBaseProduction: 0,
           precioMasFlete: 0,
-          calculoId: 0,
+          calculoId: resp.data.calculoId,
           flete: 0,
           porcFlete: 0,
           precioMaximo: 0,
           precioMaximoMasFlete: 0,
-          porDebajoDeCantidadMinima: false,
+          porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
         };
         localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
 
-        this.calculoId = 0;
+        this.calculoId = resp.data.calculoId;
         this.uiUnitPriceConverted = 0;
         this.precioPorUnidad = 0;
         if (this.item.statusAprobacionDto.precioEstimacion > 0) {
@@ -2571,7 +2497,7 @@ export class EditPage implements OnInit {
           .setValue(
             this.form.get('precioUsd').value * this.form.get('cantidad').value,
           );
-        console.log('totalUsd', this.form.get('totalUsd').value);
+
         if (this.tasa > 0) {
           if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
             this.ultimoPrecioUsd = this.form.get('precioUsd').value;
@@ -2633,19 +2559,7 @@ export class EditPage implements OnInit {
   }
   //------------------------------------
   async onRecalcular(origenLlamada: string) {
-    //this.subjectKeyUp.next('cantidadSolicitadaChanged');
-
-    /*if (this.item.idEstatus >= 5) {
-      return;
-    }*/
-
     if (this.appProduct != null) {
-      console.log({
-        producto: this.appProduct,
-        cantidadAlternativa: this.form.get('cantidadConvertidaAlternativa')
-          .value,
-      });
-
       switch (this.appProduct.tipoCalculo) {
         //RequiereEntradaLargoAncho=1
         case 1:
@@ -2668,7 +2582,6 @@ export class EditPage implements OnInit {
           this.form.get('cantidadConvertidaAlternativa').setValue(0);
           if (this.form.get('cantidadSolicitada').value > 0) {
             this.recalculoPorRango();
-            this.setColorToolbar();
           }
 
           break;
@@ -2725,11 +2638,7 @@ export class EditPage implements OnInit {
 
   buscarPrecioPorRango(_appPriceDto: AppPriceDto[], cantidad: number): number {
     let result: number;
-    console.log('_appPriceDto en buscarPrecioPorRango', _appPriceDto);
-    console.log(
-      'this.item.appProductsGetDto.appPriceDto en buscarPrecioPorRango',
-      this.item,
-    );
+
     if (_appPriceDto.length == 0) {
       _appPriceDto = this.item.appProductsGetDto.appPriceDto;
     }
@@ -2865,9 +2774,6 @@ export class EditPage implements OnInit {
     this.precio = +event;
     this.calculaTotalVenta(this.precio);
     this.setColorToolbar();
-
-    //this.subjectKeyUp.next('precioUsdChanged');
-    //this.onRecalcular('precioUsdChanged')
   }
 
   imprimirCotiza(cotizacion) {
@@ -2879,8 +2785,6 @@ export class EditPage implements OnInit {
   precioChanged(event: number) {
     this.precio = +event;
     this.subjectKeyUp.next('precioChanged');
-
-    //this.onRecalcular('precioChanged')
   }
 
   redondear(numero: number, precision: number) {

@@ -1,15 +1,72 @@
-.lbl{
-    color:black;
-    font-weight:bold;
-    width: 200px;
+.lbl {
+  color: black;
+  font-weight: bold;
+  width: 200px;
 }
 
-.titulo{
-    color: blue;
-    font-size: 1.5em;
-    font-weight: bold;
+.titulo {
+  color: blue;
+  font-size: 1.5em;
+  font-weight: bold;
 }
 
-.resaltado{
-    background-color: greenyellow;
+.resaltado {
+  background-color: greenyellow;
+}
+
+/* Estilo para la imagen del producto en la lista */
+.product-thumbnail {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Contenedor de precios tipo grid */
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.price-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.price-label {
+  font-size: 0.65rem;
+  color: #999;
+  text-transform: uppercase;
+}
+
+.price-value {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.price-value.total {
+  color: var(--ion-color-primary);
+}
+
+.item-card {
+  --padding-start: 8px;
+  --inner-padding-end: 8px;
+  margin: 10px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  background: white;
+}
+
+.loading-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
