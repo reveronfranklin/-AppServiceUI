@@ -66,16 +66,18 @@
         <ion-item lines="none">
           <ion-label position="stacked">Razón Social</ion-label>
           <ion-input type="text" class="uppercase-input" formControlName="razonSocial" maxlength="80"></ion-input>
+
         </ion-item>
         <div class="ion-text-end ion-padding-horizontal">
-          <ion-note [color]="form.get('razonSocial')?.value?.length >= 70 ? 'danger' : 'medium'">
+          <ion-note [color]="form.get('razonSocial')?.value?.length > 80 ? 'danger' : 'medium'">
             <small>{{ form.get('razonSocial')?.value?.length || 0 }} / 80</small>
           </ion-note>
         </div>
 
         <ion-item>
           <ion-label position="stacked">Dirección</ion-label>
-          <ion-textarea formControlName="direccion" rows="2"></ion-textarea>
+          <ion-textarea formControlName="direccion" rows="2" maxlength="240"></ion-textarea>
+          <p class="contador">{{this.form.get('direccion').value.length}}/240</p>
         </ion-item>
 
         <ion-item>

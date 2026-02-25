@@ -4,6 +4,7 @@ import { IUsuario } from '../interfaces/iusuario';
 import { ToastController, AlertController } from '@ionic/angular';
 import { MathService } from './math.service';
 import { Oficina } from '../models/mtr-oficina-dto';
+import { CotizacionesListService } from './cotizaciones/cotizaciones-list.service';
 @Injectable({
   providedIn: 'root',
 })
@@ -113,6 +114,7 @@ export class GeneralService {
   // resetea el objeto usuario
   KillUsuario(): void {
     localStorage.clear();
+
     // inicializo valores en localstorage
     this.SetItem('User', '');
     this.SetItem('Password', '');

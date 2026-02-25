@@ -31,6 +31,10 @@ const routes: Routes = [
     loadChildren: () => import('./pages/Cotizaciones/cotizacion-detalle/edit/edit.module').then(m => m.EditPageModule)
   },
   {
+    path: 'edit-detalle-cotizacion-refactor',
+    loadChildren: () => import('./pages/Cotizaciones/cotizacion-detalle/edit-refactor/edit-refactor.module').then(m => m.EditRefactorPageModule)
+  },
+  {
     path: 'buscador-productos-criterios',
     loadChildren: () => import('./pages/Cotizaciones/cotizacion-detalle/buscador-productos/buscador-productos.module')
     .then(m => m.BuscadorProductosPageModule)

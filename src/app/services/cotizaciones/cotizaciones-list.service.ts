@@ -31,6 +31,8 @@ export class CotizacionesListService {
   public precioLista: number;
   public precioListaProduccion: number;
 
+  public filterSearchText: string = '';
+
   constructor(
     private http: HttpClient,
     private gensvc: GeneralService,
@@ -191,9 +193,12 @@ export class CotizacionesListService {
     this.controller = 'AppDetailQuotes/';
     this.accionPath = 'InsertDetailQuotes';
 
+    this.controller = 'AppDetailQuotes/';
+    this.accionPath = 'create';
+
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePatchVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe();
@@ -215,9 +220,12 @@ export class CotizacionesListService {
     this.controller = 'AppDetailQuotes/';
     this.accionPath = 'UpdateDetailQuotes';
 
+    this.controller = 'AppDetailQuotes/';
+    this.accionPath = 'update';
+
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePatchVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe(
@@ -265,7 +273,7 @@ export class CotizacionesListService {
 
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePatchVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe();

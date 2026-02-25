@@ -13,6 +13,8 @@ import { AppGeneralQuotesCopyDto } from '../../../models/app-general-quotes-ccop
 import { AppGeneralQuotesChangeStatusDto } from 'src/app/models/app-general-quotes-change-status-dto';
 import { filter } from 'rxjs/operators';
 import { AppGeneralQuotesDeleteDto } from 'src/app/models/app-general-quotes-delete-dto';
+import { UpperCasePipe } from '@angular/common';
+import { th } from 'date-fns/locale';
 
 @Component({
   selector: 'app-cotizaciones-list',
@@ -66,18 +68,22 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
     if (this.usuario) {
       this.nombreUsuario = `(${this.usuario.user})`;
     }
+    // Recuperamos el filtro guardado en el servicio
+    this.searchText = this.cotizacionesService.filterSearchText;
+
     if (this.cargando) return;
-    this.loadQuotes();
+    this.loadQuotes(this.searchText);
   }
 
   ionViewDidEnter() {
-    this.loadQuotes();
+    this.loadQuotes(this.searchText);
   }
 
   ngOnDestroy() {}
 
-  async loadQuotes() {
-    if (this.cargando) return;
+  async loadQuotes(searhTextBusqueda?: string) {
+    //if (this.cargando) return;
+
     this.cargando = true;
     this.mensaje = '';
 
@@ -86,7 +92,7 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
       pageNumber: this.currentPage,
       usuarioConectado: this.usuario.user,
       cotizacion: '',
-      searchText: this.searchText,
+      searchText: searhTextBusqueda,
       fechaDesde: this.fechaDesde,
       fechaHasta: this.fechaHasta,
       statusId: this.statusId,
@@ -99,7 +105,6 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
         this.totalPages = Math.ceil(this.totalRecords / this.pageSize);
         this.mensaje = res.meta.message;
         this.cargando = false;
-     
       },
       error: (err) => {
         console.error(err);
@@ -113,7 +118,7 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
   refresh() {
     this.currentPage = 1;
     this.appGeneralQuotesGetDtoArray = [];
-    this.loadQuotes();
+    this.loadQuotes(this.searchText);
   }
 
   onPageSizeChange() {
@@ -127,15 +132,30 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
   }
 
   onChangeSearchText(event: any) {
-    // Extraemos el valor directamente del evento para evitar desfases
-    const val = event.target.value;
+    // 1. Intentamos obtener el valor de detail (Ionic) o de target (DOM estándar)
+    const val =
+      event.detail?.value !== undefined
+        ? event.detail.value
+        : event.target?.value;
 
-    // Limpiamos la lista para que el *ngIf="cargando" muestre el skeleton inmediatamente
-    this.appGeneralQuotesGetDtoArray = [];
+    console.log('Valor capturado:', val); // Ahora debería mostrar el texto
+
+    // Actualizamos la variable local para que el filtro sea consistente
     this.searchText = val;
-    this.currentPage = 1; // RESET obligatorio al buscar
+    // GUARDAMOS en el servicio para que no se pierda al navegar
+    this.cotizacionesService.filterSearchText = val;
 
-    this.loadQuotes();
+    // 2. Limpiar la lista para feedback visual inmediato (Skeleton)
+    this.appGeneralQuotesGetDtoArray = [];
+
+    // 3. Actualizar la variable manualmente (asegurando que no sea undefined)
+    console.log('val', val);
+
+    // 4. Resetear página
+    this.currentPage = 1;
+
+    // 5. Llamar al servicio
+    this.loadQuotes(val);
   }
 
   // --- Paginación ---

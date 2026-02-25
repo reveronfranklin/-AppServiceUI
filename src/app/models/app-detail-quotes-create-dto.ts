@@ -33,4 +33,6 @@ export class AppDetailQuotesCreateDto {
   salida: string;
   presentacion: string;
   eliminarSolicitud: boolean;
+  usuarioConectado;
+  string;
 }
