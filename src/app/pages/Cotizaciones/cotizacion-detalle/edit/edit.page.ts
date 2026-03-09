@@ -1335,60 +1335,6 @@ export class EditPage implements OnInit {
   }
 
   setPrecioMasFlete() {
-    const precioString = localStorage.getItem('precio-mas-flete');
-
-    // 1. Validar si el valor existe en localStorage
-    if (precioString === null || precioString === 'undefined') {
-      // 'undefined' string can sometimes appear if not set correctly
-      console.warn(
-        'Advertencia: "precio-mas-flete" no encontrado en localStorage.',
-      );
-      // Aquí puedes decidir cómo manejar la ausencia del valor:
-      // a) Asignar valores por defecto a tus propiedades:
-      this.newPrecioMasFlete = 0;
-      this.flete = 0;
-      this.unitPriceBaseProduction = 0;
-      this.calculoId = 0; // O null, dependiendo de tu lógica
-      this.precioMaximo = 0;
-      this.porDebajoDeCantidadMinima = false;
-      // b) O, podrías simplemente retornar la función para evitar ejecutar el resto del código
-      // return;
-    }
-    // 2. Si el valor existe, proceder a parsearlo
-    const precio: PrecioDto = JSON.parse(precioString);
-    console.log('precio en setPrecioMasFlete', precio);
-    // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
-    this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
-    this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
-    this.flete = precio.flete ?? 0;
-    this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
-    this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
-    this.precioMaximo = precio.precioMaximo ?? 0;
-    this.porDebajoDeCantidadMinima = precio.porDebajoDeCantidadMinima ?? false;
-
-    // El resto de tu lógica que depende de 'this.item' se ejecuta después de
-    // que las variables de precio se hayan inicializado (ya sea desde localStorage o con valores por defecto)
-
-    if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
-      this.unitPriceBaseProduction =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
-      this.newPrecioMasFlete =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
-      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
-    } else {
-      if (
-        (this.item.appProductsGetDto &&
-          this.item.appProductsGetDto.requiereEstimacion) ||
-        this.porDebajoDeCantidadMinima
-      ) {
-        this.newPrecioMasFlete = 0;
-        this.flete = 0;
-        this.unitPriceBaseProduction = 0;
-        this.calculoId = precio.calculoId ?? 0;
-        this.precioMaximo = 0;
-      }
-    }
-
     if (this.item.idEstatus >= 5) {
       ///const precio: PrecioDto = JSON.parse(precioString); s
 
@@ -1413,6 +1359,83 @@ export class EditPage implements OnInit {
 
       this.newPrecioMasFlete = this.newPrecioMasFlete + this.flete;
       this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+      return;
+    }
+
+    const precioString = localStorage.getItem('precio-mas-flete');
+
+    // 1. Validar si el valor existe en localStorage
+    if (precioString === null || precioString === 'undefined') {
+      // 'undefined' string can sometimes appear if not set correctly
+      console.warn(
+        'Advertencia: "precio-mas-flete" no encontrado en localStorage.',
+      );
+
+      // Aquí puedes decidir cómo manejar la ausencia del valor:
+      // a) Asignar valores por defecto a tus propiedades:
+      this.newPrecioMasFlete = 0;
+      this.flete = 0;
+      this.unitPriceBaseProduction = 0;
+      this.calculoId = 0; // O null, dependiendo de tu lógica
+      this.precioMaximo = 0;
+      this.porDebajoDeCantidadMinima = false;
+      const precio: PrecioDto = {
+        unitPriceBaseProduction: 0,
+        precioMasFlete: 0,
+        precioMaximo: 0,
+        precioMaximoMasFlete: 0,
+        calculoId: 0,
+        flete: 0,
+        porcFlete: 0,
+        porDebajoDeCantidadMinima: false,
+      };
+
+      // b) O, podrías simplemente retornar la función para evitar ejecutar el resto del código
+      return;
+    }
+    // 2. Si el valor existe, proceder a parsearlo
+    const precio: PrecioDto = JSON.parse(precioString);
+    console.log('precio en setPrecioMasFlete', precio);
+    // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
+    this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
+    this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+    this.flete = precio.flete ?? 0;
+    this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
+    this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
+    this.precioMaximo = precio.precioMaximo ?? 0;
+    this.porDebajoDeCantidadMinima = precio.porDebajoDeCantidadMinima ?? false;
+    console.log('this.newPrecioMasFlete en linea 1407', this.newPrecioMasFlete);
+    if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
+      this.unitPriceBaseProduction =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+      this.newPrecioMasFlete =
+        this.item.statusAprobacionDto.valorVentaAprobarUsd;
+      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+      return;
+    }
+    console.log({
+      Producto: this.item.appProductsGetDto,
+      RequiereEstimacion: this.item.appProductsGetDto.requiereEstimacion,
+      PordebajoCAntidadMinima: this.porDebajoDeCantidadMinima,
+    });
+    if (
+      (this.item.appProductsGetDto &&
+        this.item.appProductsGetDto.requiereEstimacion) ||
+      this.porDebajoDeCantidadMinima
+    ) {
+      console.log(
+        'this.newPrecioMasFlete en linea 1422',
+        this.newPrecioMasFlete,
+      );
+      this.newPrecioMasFlete = 0;
+      this.flete = 0;
+      this.unitPriceBaseProduction = 0;
+      this.calculoId = precio.calculoId ?? 0;
+      this.precioMaximo = 0;
+      console.log(
+        'this.newPrecioMasFlete en linea 1432',
+        this.newPrecioMasFlete,
+      );
     }
   }
 
@@ -2260,10 +2283,12 @@ export class EditPage implements OnInit {
     };
 
     this.buscandoPrecio = true;
+    this.showLoading = true;
     this.mensaje = 'Buscando precio ........';
 
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
+      this.showLoading = false;
       this.mensaje = '';
 
       this.calculoId = resp.data.calculoId;
@@ -2609,6 +2634,14 @@ export class EditPage implements OnInit {
             this.setColorToolbar();
           }
 
+          break;
+        case 12:
+          this.form.get('cantidad').setValue(0);
+          this.form.get('cantidadConvertidaAlternativa').setValue(0);
+          if (this.form.get('cantidadSolicitada').value > 0) {
+            this.recalculoPrecioPorProductoCantidad();
+            this.setColorToolbar();
+          }
           break;
         case 5:
           this.form.get('cantidad').setValue(0);

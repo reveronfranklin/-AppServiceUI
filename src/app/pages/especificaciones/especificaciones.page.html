@@ -1,6 +1,6 @@
 <ion-header>
   <ion-toolbar color='primary'>
-    <ion-title>Especificaciones Cotizacion: {{cotizacion.cotizacion }}  {{titulo}} </ion-title>
+    <ion-title>Especificaciones Cotizacion: {{cotizacion.cotizacion }} {{titulo}} </ion-title>
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
       <ion-button (click)="gotoBack()">
@@ -9,20 +9,20 @@
       <!-- <ion-back-button defaultHref="/" text=""></ion-back-button> -->
     </ion-buttons>
 
-        <!-- Botonos auxiliares -->
-      <ion-buttons slot="end">
-        <!-- Refrescar lista  -->
-        <ion-button (click)="refresh()">
-          <ion-icon name="refresh"></ion-icon>
+    <!-- Botonos auxiliares -->
+    <ion-buttons slot="end">
+      <!-- Refrescar lista  -->
+      <ion-button (click)="refresh()">
+        <ion-icon name="refresh"></ion-icon>
+      </ion-button>
+      <div *ngIf="this.form.get('idTipoOrden').value>1">
+        <ion-icon *ngIf="showLoading" name="cloud-upload-outline" size="large"></ion-icon>
+        <ion-button *ngIf="!showLoading" (click)="update()" [disabled]="!form.valid" size="large">
+          <ion-icon name="save-outline" size="large"></ion-icon>
+          <!-- <ion-icon name="checkmark" style="color: white; font-size: 2.2em; font-weight:900;" slot="end"></ion-icon> -->
         </ion-button>
-        <div *ngIf="this.form.get('idTipoOrden').value>1">
-          <ion-icon *ngIf="showLoading" name="cloud-upload-outline" size="large"></ion-icon>
-          <ion-button *ngIf="!showLoading" (click)="update()" [disabled]="!form.valid" size="large">
-              <ion-icon name="save-outline" size="large"></ion-icon>
-              <!-- <ion-icon name="checkmark" style="color: white; font-size: 2.2em; font-weight:900;" slot="end"></ion-icon> -->
-          </ion-button>
       </div>
-      </ion-buttons>
+    </ion-buttons>
 
   </ion-toolbar>
   <ion-col *ngIf="this.showLoading">
@@ -35,252 +35,244 @@
 
 </ion-header>
 
-<ion-content >
+<ion-content>
   <ion-card *ngIf="this.partesGetDtoSelected!==null && this.papelesValidos!==null">
     <form [formGroup]="form" novalidate (ngSubmit)="save($event)">
-        <ion-grid>
-          <ion-row >
-            <ion-col size-lg="12" size-md="12" size-sm="12" size="12">
-                <ion-item *ngIf="false">
-                    <ion-input class="ion-text-wrap" type="text" formControlName="cotizacion" placeholder="Cotizacion">
-                    </ion-input>
-                </ion-item>
-                <ion-item *ngIf="false">
-                  <ion-input class="ion-text-wrap" type="text" formControlName="renglon" placeholder="Renglon">
-                  </ion-input>
-                </ion-item>
-                <ion-item *ngIf="false">
-                  <ion-input class="ion-text-wrap" type="text" formControlName="propuesta" placeholder="propuesta">
-                  </ion-input>
-                </ion-item>
-                <ion-item>
-                <ion-col *ngIf="false">
-                   <ion-label class="bold" >Parte:</ion-label>
-                 </ion-col>
-                 <ion-col *ngIf="false">
-                  <ion-input class="ion-text-wrap" type="text" formControlName="idParte" placeholder="idParte">
-                  </ion-input>
-                </ion-col>
-
-                </ion-item>
-
-
-                <ion-item>
-                  <!-- <ion-label position="floating">Tipo Orden:</ion-label> -->
-                  <ion-label>Tipo Orden:</ion-label>
-                  <ion-select formControlName="idTipoOrden" >
-                    <ion-select-option *ngFor="let item of ListTipoOrden" [value]="item.idTipoOrden">
-                      {{item.tipoorden}}
-                    </ion-select-option>
-                  </ion-select>
-                  <br/>
-                  <ion-label class="bold" >Frase Marginal:</ion-label>
-                  <ion-input class="ion-text-wrap" type="text" formControlName="frasesMarginales" placeholder="frasesMarginales">
-                  </ion-input>
-                </ion-item>
-            </ion-col>
-        </ion-row>
-        </ion-grid>
-
-        <div class="container">
-          <ion-card style="padding: 1px;">
-            <ion-card-header color="light">
-              <ion-item color="light" lines="none">
-                <p> Papel</p>
-              </ion-item>
-              <ion-searchbar type="text" debounce="500" animated
-                color="light"
-                (ionChange)="searchPapel($event)" clearInput class="ion-searchbar" ></ion-searchbar>
-
-              <ion-item>
-                <ion-input class="ion-text-wrap" type="text" formControlName="idPapel" readonly="true">
+      <ion-grid>
+        <ion-row>
+          <ion-col size-lg="12" size-md="12" size-sm="12" size="12">
+            <ion-item *ngIf="false">
+              <ion-input class="ion-text-wrap" type="text" formControlName="cotizacion" placeholder="Cotizacion">
+              </ion-input>
+            </ion-item>
+            <ion-item *ngIf="false">
+              <ion-input class="ion-text-wrap" type="text" formControlName="renglon" placeholder="Renglon">
+              </ion-input>
+            </ion-item>
+            <ion-item *ngIf="false">
+              <ion-input class="ion-text-wrap" type="text" formControlName="propuesta" placeholder="propuesta">
+              </ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-col *ngIf="false">
+                <ion-label class="bold">Parte:</ion-label>
+              </ion-col>
+              <ion-col *ngIf="false">
+                <ion-input class="ion-text-wrap" type="text" formControlName="idParte" placeholder="idParte">
                 </ion-input>
-                <ion-buttons color="primary" slot="end">
-                  <ion-button (click)="limpiarPapel()">
-                    <ion-icon name="trash"></ion-icon>
+              </ion-col>
 
-                  </ion-button>
-                </ion-buttons>
+            </ion-item>
+
+
+            <ion-item>
+              <!-- <ion-label position="floating">Tipo Orden:</ion-label> -->
+              <ion-label>Tipo Orden:</ion-label>
+              <ion-select formControlName="idTipoOrden">
+                <ion-select-option *ngFor="let item of ListTipoOrden" [value]="item.idTipoOrden">
+                  {{item.tipoorden}}
+                </ion-select-option>
+              </ion-select>
+              <br />
+              <ion-label class="bold">Frase Marginal:</ion-label>
+              <ion-input class="ion-text-wrap" type="text" formControlName="frasesMarginales"
+                placeholder="frasesMarginales">
+              </ion-input>
+            </ion-item>
+          </ion-col>
+        </ion-row>
+      </ion-grid>
+
+      <div class="container">
+        <ion-card style="padding: 1px;">
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> Papel</p>
+            </ion-item>
+            <ion-searchbar type="text" debounce="500" animated color="light" (ionChange)="searchPapel($event)"
+              clearInput class="ion-searchbar"></ion-searchbar>
+
+            <ion-item>
+              <ion-input class="ion-text-wrap" type="text" formControlName="idPapel" readonly="true">
+              </ion-input>
+              <ion-buttons color="primary" slot="end">
+                <ion-button (click)="limpiarPapel()">
+                  <ion-icon name="trash"></ion-icon>
+
+                </ion-button>
+              </ion-buttons>
+            </ion-item>
+
+          </ion-card-header>
+          <ion-card-content class="ion-margin-top">
+            <ion-list>
+              <ion-item *ngFor="let item of papelesValidos" (click)="selecPapel(item)" utton detail="false"
+                [class.item-seleccionado]="form.get('idPapel').value.includes(item.idPapel)">
+                {{ item.idPapel }}
               </ion-item>
+            </ion-list>
+          </ion-card-content>
 
-            </ion-card-header>
-            <ion-card-content class="ion-margin-top"  >
+        </ion-card>
+        <ion-card style="padding: 1px;">
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> Tintas Frente</p>
+            </ion-item>
+
+            <ion-searchbar type="text" debounce="500" animated color="light" (ionChange)="searchFrente($event)"
+              clearInput class="ion-searchbar"></ion-searchbar>
+
+            <ion-item>
+              <ion-input class="ion-text-wrap" type="text" formControlName="tintasFrente" readonly="true">
+              </ion-input>
+              <ion-buttons color="primary" slot="end">
+                <ion-button (click)="limpiarTintasFrente()">
+                  <ion-icon name="trash"></ion-icon>
+
+                </ion-button>
+              </ion-buttons>
+            </ion-item>
+          </ion-card-header>
+          <ion-card-content class="ion-no-padding">
+            <ion-list>
+              <ion-item *ngFor="let item of tintasGetDto" (click)="selectFrente(item)" button detail="false"
+                [class.item-seleccionado]="form.get('tintasFrente').value.includes(item.codigo)">
+                {{ item.codigo }}
+              </ion-item>
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+        <ion-card style="padding: 1px;">
+
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> Tintas Respaldo</p>
+            </ion-item>
+
+            <ion-searchbar type="text" debounce="500" animated color="light" (ionChange)="searchRespaldo($event)"
+              clearInput class="ion-searchbar"></ion-searchbar>
+
+            <ion-item>
+              <ion-input class="ion-text-wrap" type="text" formControlName="tintasRespaldo" readonly="true">
+              </ion-input>
+              <ion-buttons color="primary" slot="end">
+                <ion-button (click)="limpiarTintasRespaldo()">
+                  <ion-icon name="trash"></ion-icon>
+
+                </ion-button>
+              </ion-buttons>
+            </ion-item>
+          </ion-card-header>
+          <ion-card-content class="ion-margin-top">
+            <ion-list>
+              <ion-item *ngFor="let item of tintasRespaldoGetDto" (click)="selectRespaldo(item)" button detail="false"
+                [class.item-seleccionado]="form.get('tintasRespaldo').value.includes(item.codigo)">
+                {{ item.codigo }}
+              </ion-item>
+            </ion-list>
+          </ion-card-content>
+        </ion-card>
+        <ion-card style="padding: 1px;">
+
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> Otras Especidicacio de las Partes</p>
+            </ion-item>
+
+          </ion-card-header>
+          <ion-card-content class="ion-margin-top" [scrollEvents]="true">
+            <ion-scroll>
               <ion-list>
-                <ion-item *ngFor="let item of papelesValidos" (click)="selecPapel(item)" class="ion-no-padding">
-                    {{ item.idPapel }}
+                <ion-item *ngFor="let item of this.appVariablesEspecificacionesPartesGetDto" class="ion-no-padding">
+                  {{ item.nombreVariable }}
+                  <ion-item>
+                    <div class="padingRadio"
+                      *ngFor="let valores of item.appValoresVariablesEspecificacionesPartesGetDto">
+
+
+
+                      <ion-label> {{valores.valor}} </ion-label>
+                      <input type="radio" [name]="item.idVariable" [value]="valores.valor" [checked]="valores.cheked"
+                        (click)="radioChangeHandler($event, valores.id, item.idVariable, item.appValoresVariablesEspecificacionesPartesGetDto)">
+
+                      <!--<input type="radio" name="{{item.idVariable }}" value="{{valores.valor}}"
+                        [checked]="valores.cheked ? true : false"
+                        (change)="radioChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesPartesGetDto)">
+                      -->
+
+
+                    </div>
+                  </ion-item>
+
                 </ion-item>
               </ion-list>
-           </ion-card-content>
+            </ion-scroll>
 
-          </ion-card>
-          <ion-card style="padding: 1px;">
-            <ion-card-header color="light">
-              <ion-item color="light" lines="none">
-                <p> Tintas Frente</p>
-              </ion-item>
+          </ion-card-content>
+        </ion-card>
+        <ion-card style="padding: 1px;">
 
-                <ion-searchbar type="text" debounce="500" animated
-                color="light"
-                (ionChange)="searchFrente($event)" clearInput class="ion-searchbar"></ion-searchbar>
+          <ion-card-header color="light">
+            <ion-item color="light" lines="none">
+              <p> Otras Especidicaciones del producto</p>
+            </ion-item>
 
-              <ion-item>
-                <ion-input class="ion-text-wrap" type="text" formControlName="tintasFrente" readonly="true">
-                </ion-input>
-                <ion-buttons color="primary" slot="end">
-                  <ion-button (click)="limpiarTintasFrente()">
-                    <ion-icon name="trash"></ion-icon>
+          </ion-card-header>
+          <ion-card-content class="ion-margin-top">
+            <ion-scroll class="scrollable">
+              <ion-list>
+                <ion-item *ngFor="let item of this.appVariablesEspecificacionesGeneralGetDto" class="ion-no-padding">
+                  {{ item.nombreVariable }}
 
-                  </ion-button>
-                </ion-buttons>
-              </ion-item>
-            </ion-card-header>
-            <ion-card-content class="ion-margin-top"  >
-                <ion-list>
-                  <ion-item *ngFor="let item of tintasGetDto" (click)="selectFrente(item)" class="ion-no-padding">
-                      {{ item.codigo }}
+
+
+
+                  <ion-item>
+                    <div class="scroll" *ngFor="let valores of item.appValoresVariablesEspecificacionesGeneralGetDto">
+
+
+
+                      <ion-label> {{valores.valor}} </ion-label>
+                      <div *ngIf="valores.flagMultipleValor==='X'">
+                        <input type="checkbox" name="{{item.idVariable }}" value="{{valores.valor}}"
+                          [checked]="valores.cheked ? true : false"
+                          (change)="radioGeneralChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesGeneralGetDto)">
+                      </div>
+                      <div *ngIf="valores.flagMultipleValor===''">
+                        <input type="radio" name]="item.idVariable" [value]="valores.valor" [checked]="valores.cheked"
+                          (click)="radioGeneralChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesGeneralGetDto)">
+                      </div>
+
+                      <!--<div *ngIf="valores.flagMultipleValor===''">
+                        <input type="radio" name="{{item.idVariable }}" value="{{valores.valor}}"
+                          [checked]="valores.cheked ? true : false"
+                          (change)="radioGeneralChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesGeneralGetDto)">
+                      </div>
+                    -->
+
+
+
+
+
+                    </div>
                   </ion-item>
-                </ion-list>
-             </ion-card-content>
-          </ion-card>
-          <ion-card style="padding: 1px;">
-
-            <ion-card-header color="light">
-              <ion-item color="light" lines="none">
-                <p> Tintas Respaldo</p>
-              </ion-item>
-
-                <ion-searchbar type="text" debounce="500" animated
-                color="light"
-                (ionChange)="searchRespaldo($event)" clearInput class="ion-searchbar"></ion-searchbar>
-
-              <ion-item>
-                <ion-input class="ion-text-wrap" type="text" formControlName="tintasRespaldo" readonly="true" >
-                </ion-input>
-                <ion-buttons color="primary" slot="end">
-                  <ion-button (click)="limpiarTintasRespaldo()">
-                    <ion-icon name="trash"></ion-icon>
-
-                  </ion-button>
-                </ion-buttons>
-              </ion-item>
-            </ion-card-header>
-            <ion-card-content class="ion-margin-top"  >
-                <ion-list>
-                  <ion-item *ngFor="let item of tintasRespaldoGetDto" (click)="selectRespaldo(item)" class="ion-no-padding">
-                      {{ item.codigo }}
-                  </ion-item>
-                </ion-list>
-             </ion-card-content>
-          </ion-card>
-          <ion-card style="padding: 1px;">
-
-            <ion-card-header color="light">
-              <ion-item color="light" lines="none">
-                <p> Otras Especidicacio de las Partes</p>
-              </ion-item>
-
-            </ion-card-header>
-            <ion-card-content class="ion-margin-top" [scrollEvents]="true" >
-              <ion-scroll>
-                <ion-list>
-                  <ion-item *ngFor="let item of this.appVariablesEspecificacionesPartesGetDto" class="ion-no-padding">
-                      {{ item.nombreVariable }}
-                          <ion-item>
-                              <div class="padingRadio" *ngFor="let valores of item.appValoresVariablesEspecificacionesPartesGetDto">
-
-
-
-                                      <ion-label>  {{valores.valor}}  </ion-label>
-                                      <input
-
-                                        type="radio"
-                                        name="{{item.idVariable }}"
-                                        value="{{valores.valor}}"
-
-                                        [checked]="valores.cheked ? true : false"
-                                        (change)="radioChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesPartesGetDto)"
-                                      >
-                                     <!--  <ion-radio name="{{item.idVariable }}" value="{{valores.valor}}" > </ion-radio> -->
-
-
-
-                              </div>
-                            </ion-item>
-
-                  </ion-item>
-                </ion-list>
-              </ion-scroll>
-
-             </ion-card-content>
-          </ion-card>
-          <ion-card style="padding: 1px;">
-
-            <ion-card-header color="light">
-              <ion-item color="light" lines="none">
-                <p> Otras Especidicaciones del producto</p>
-              </ion-item>
-
-            </ion-card-header>
-            <ion-card-content class="ion-margin-top"  >
-              <ion-scroll  class="scrollable">
-                <ion-list>
-                  <ion-item *ngFor="let item of this.appVariablesEspecificacionesGeneralGetDto" class="ion-no-padding">
-                     {{ item.nombreVariable }}
-
-
-
-
-                          <ion-item >
-                              <div class="scroll" *ngFor="let valores of item.appValoresVariablesEspecificacionesGeneralGetDto">
-
-
-
-                                      <ion-label>  {{valores.valor}} </ion-label>
-                                      <div *ngIf="valores.flagMultipleValor==='X'">
-                                        <input
-                                        type="checkbox"
-
-                                        name="{{item.idVariable }}"
-                                        value="{{valores.valor}}"
-
-                                        [checked]="valores.cheked ? true : false"
-                                        (change)="radioGeneralChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesGeneralGetDto)"
-                                        >
-                                      </div>
-                                      <div *ngIf="valores.flagMultipleValor===''">
-                                          <input
-
-                                          type="radio"
-                                          name="{{item.idVariable }}"
-                                          value="{{valores.valor}}"
-
-                                          [checked]="valores.cheked ? true : false"
-                                          (change)="radioGeneralChangeHandler($event,valores.id,item.idVariable,item.appValoresVariablesEspecificacionesGeneralGetDto)"
-                                        >
-                                      </div>
-
-
-
-
-
-                              </div>
-                            </ion-item>
 
 
 
 
 
 
-                  </ion-item>
-                </ion-list>
-              </ion-scroll>
+                </ion-item>
+              </ion-list>
+            </ion-scroll>
 
-             </ion-card-content>
-          </ion-card>
-        </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
     </form>
     <div *ngIf="false">
-      <ion-button [disabled]="(!form.valid)"  (click)="Update()">
+      <ion-button [disabled]="(!form.valid)" (click)="Update()">
         Actualizar Cotizacion
       </ion-button>
     </div>
@@ -306,14 +298,14 @@
 
     </tr>
 
-  <tr  *ngFor="let item of partesGetDto">
+    <tr *ngFor="let item of partesGetDto">
 
-    <!-- <td (click)="presentActionSheet(item)">{{ item.fechaString | date }} </td> -->
+      <!-- <td (click)="presentActionSheet(item)">{{ item.fechaString | date }} </td> -->
 
 
 
       <td (click)="setItem(item)">
-        <ion-checkbox   [checked]= "item.selected"  color="primary"></ion-checkbox>
+        <ion-checkbox [checked]="item.selected" color="primary"></ion-checkbox>
       </td>
       <td (click)="setItem(item)">{{ item.idParte}} </td>
       <td (click)="setItem(item)">{{ item.idPapel}} </td>
@@ -327,7 +319,7 @@
       <td (click)="setItem(item)">{{ item. frasesMarginales }}</td>
 
 
-  </tr>
+    </tr>
 
   </table>
 </ion-content>

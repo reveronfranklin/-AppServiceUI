@@ -70,6 +70,10 @@ export class GeneralService {
 
     const usuario = this.GetUsuario();
 
+    if (!usuario) {
+      return this.basePath;
+    }
+
     const vendedor = this.getVendedor(usuario.user);
     console.log('usuario en getBasePath', usuario);
     console.log('vendedor en getBasePath *******', vendedor);

@@ -93,13 +93,17 @@ export class ProductoService {
   getPrice(data): Observable<any> {
     this.controller = 'AppRecipesByAppDetailQuotes/';
     this.accionPath = 'GetPrice';
+
+    this.controller = 'calculoprecio/';
+    this.accionPath = 'GetPrice';
+
     /*return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
         catchError(this.handleError)
       );*/
     console.log('Payload en el servicio de getPrice Linea 99', data);
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePathVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe(

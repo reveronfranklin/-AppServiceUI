@@ -16,7 +16,6 @@ import {
   TipoOrden,
 } from 'src/app/models/especificaciones';
 import { CotizacionesListService } from 'src/app/services/cotizaciones/cotizaciones-list.service';
-import { AppDetailQuotesGetDto } from 'src/app/models/app-detail-quotes-get-dto';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { GeneralService } from 'src/app/services/general.service';
 
@@ -58,7 +57,7 @@ export class EspecificacionesPage implements OnInit {
     private router: Router,
     private cotizacionesService: CotizacionesListService,
     private actionSheetCtrl: ActionSheetController,
-    public generalService: GeneralService
+    public generalService: GeneralService,
   ) {
     this.buildForm();
   }
@@ -67,7 +66,7 @@ export class EspecificacionesPage implements OnInit {
     this.cargarTipoOrden();
     this.cotizacion =
       this.router.getCurrentNavigation().extras.state.cotizacion;
-    console.log('cotizacion recibida en especificaciones', this.cotizacion);
+
     this.partesFilter = {
       cotizacion: this.cotizacion.cotizacion,
       renglon: 1,
@@ -76,7 +75,6 @@ export class EspecificacionesPage implements OnInit {
       idProducto: this.cotizacion.appDetailQuotesGetDto[0].idProducto,
       //this.searchText
     };
-    console.log('filter enviado en especificaciones', this.partesFilter);
 
     this.showLoading = true;
     this.mensaje = 'Cargando...';
@@ -145,7 +143,7 @@ export class EspecificacionesPage implements OnInit {
   gotoBack() {
     console.log(
       'this.cotizacion  en gotoBAck',
-      this.cotizacion.appDetailQuotesGetDto[0].appProductsGetDto
+      this.cotizacion.appDetailQuotesGetDto[0].appProductsGetDto,
     );
     const itemProd = this.cotizacion.appDetailQuotesGetDto[0];
     this.router.navigate(['edit-detalle-cotizacion'], {
@@ -156,6 +154,95 @@ export class EspecificacionesPage implements OnInit {
         producto: this.cotizacion.appDetailQuotesGetDto[0].appProductsGetDto,
       },
     });
+  }
+
+  // Calcula cuántas tintas físicas distintas se usarán en total
+  obtenerTotalTintasUnicas(frente: string, respaldo: string): number {
+    // Convertimos los strings en arrays, limpiando espacios
+    const arrayFrente = frente
+      .split(';')
+      .map((t) => t.trim())
+      .filter((t) => t !== '');
+    const arrayRespaldo = respaldo
+      .split(';')
+      .map((t) => t.trim())
+      .filter((t) => t !== '');
+
+    // Unimos ambos lados en una sola lista
+    const todasLasTintas = [...arrayFrente, ...arrayRespaldo];
+
+    // Filtramos "S/IMP" porque representa ausencia de tinta
+    const soloTintasReales = todasLasTintas.filter(
+      (tinta) => tinta !== 'S/IMP',
+    );
+
+    // El Set se encarga de dejar solo los códigos únicos (CMYK contará como uno solo)
+    const unicas = new Set(soloTintasReales);
+
+    return unicas.size;
+  }
+  selectFrente(frente) {
+    let valorActualFrente = this.form.get('tintasFrente').value || '';
+    let valorActualRespaldo = this.form.get('tintasRespaldo').value || '';
+
+    // 1. Si es S/IMP, reemplaza todo (según tu lógica actual)
+    if (frente.codigo === 'S/IMP') {
+      this.form.get('tintasFrente').setValue('S/IMP');
+    } else {
+      // 2. Si ya contiene esta tinta, no hacemos nada para evitar duplicar el string
+      if (valorActualFrente.split(';').includes(frente.codigo)) return;
+
+      // 3. Simulamos el nuevo valor
+      let nuevoFrente =
+        valorActualFrente === '' || valorActualFrente === 'S/IMP'
+          ? frente.codigo
+          : `${valorActualFrente};${frente.codigo}`;
+
+      // 4. Validamos el total global
+      if (
+        this.obtenerTotalTintasUnicas(nuevoFrente, valorActualRespaldo) >
+        this.cantTintas
+      ) {
+        this.generalService.presentToast(
+          `Límite excedido: El producto solo permite ${this.cantTintas} tintas distintas.`,
+          'danger',
+        );
+        return;
+      }
+      this.form.get('tintasFrente').setValue(nuevoFrente);
+    }
+
+    this.validarTintasAfecta('tintasFrente');
+  }
+
+  selectRespaldo(respaldo) {
+    let valorActualFrente = this.form.get('tintasFrente').value || '';
+    let valorActualRespaldo = this.form.get('tintasRespaldo').value || '';
+
+    if (respaldo.codigo === 'S/IMP') {
+      this.form.get('tintasRespaldo').setValue('S/IMP');
+    } else {
+      if (valorActualRespaldo.split(';').includes(respaldo.codigo)) return;
+
+      let nuevoRespaldo =
+        valorActualRespaldo === '' || valorActualRespaldo === 'S/IMP'
+          ? respaldo.codigo
+          : `${valorActualRespaldo};${respaldo.codigo}`;
+
+      if (
+        this.obtenerTotalTintasUnicas(valorActualFrente, nuevoRespaldo) >
+        this.cantTintas
+      ) {
+        this.generalService.presentToast(
+          `Límite excedido: El producto solo permite ${this.cantTintas} tintas distintas.`,
+          'danger',
+        );
+        return;
+      }
+      this.form.get('tintasRespaldo').setValue(nuevoRespaldo);
+    }
+
+    this.validarTintasAfecta('tintasRespaldo');
   }
 
   cuentaTintas(actual, nuevo) {
@@ -260,6 +347,30 @@ export class EspecificacionesPage implements OnInit {
   }
 
   validarListaTintas() {
+    for (let i = 0; i < this.partesGetDto.length; i++) {
+      const p = this.partesGetDto[i];
+
+      // Usamos el valor nuevo si existe, si no el original
+      const f =
+        p.tintasFrenteNew !== undefined && p.tintasFrenteNew !== ''
+          ? p.tintasFrenteNew
+          : p.tintasFrente;
+      const r =
+        p.tintasRespaldoNew !== undefined && p.tintasRespaldoNew !== ''
+          ? p.tintasRespaldoNew
+          : p.tintasRespaldo;
+
+      const total = this.obtenerTotalTintasUnicas(f || '', r || '');
+
+      if (total > this.cantTintas) {
+        console.log(`Error en Parte ${p.idParte}: Detectadas ${total} tintas.`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  validarListaTintasBk() {
     const listaTintas: string[] = [];
     const partes = [...this.partesGetDto];
 
@@ -305,18 +416,85 @@ export class EspecificacionesPage implements OnInit {
     return true;
   }
 
-  radioChangeHandler(event, id, idVariable, itemvalores) {
+  radioChangeHandlerbk(event, id, idVariable, itemvalores) {
     this.findAndUpdate(id, idVariable, 'valorReal', event.target.defaultValue);
   }
+  radioChangeHandler(event, id, idVariable, itemvalores) {
+    // 1. Buscamos el grupo de la variable
+    const foundElement = this.appVariablesEspecificacionesPartesGetDto.find(
+      (v) => v.idVariable === idVariable,
+    );
 
-  radioGeneralChangeHandler(event, id, idVariable, itemvalores) {
+    // 2. Buscamos el valor específico al que se le hizo clic
+    const valorClickeado =
+      foundElement.appValoresVariablesEspecificacionesPartesGetDto.find(
+        (v) => v.id === id,
+      );
+
+    // 3. Lógica de "Toggle":
+    // Si ya estaba marcado (cheked === true), lo desmarcamos
+    if (valorClickeado.cheked) {
+      valorClickeado.cheked = false;
+      valorClickeado.valorReal = '';
+    } else {
+      // Si no estaba marcado, primero limpiamos todos los demás del grupo (comportamiento radio)
+      foundElement.appValoresVariablesEspecificacionesPartesGetDto.forEach(
+        (dato) => {
+          dato.cheked = false;
+          dato.valorReal = '';
+        },
+      );
+
+      // Marcamos el actual
+      valorClickeado.cheked = true;
+      valorClickeado.valorReal = valorClickeado.valor;
+    }
+  }
+
+  radioGeneralChangeHandlerBk(event, id, idVariable, itemvalores) {
     this.findGeneralAndUpdate(
       id,
       idVariable,
       'valorReal',
       event.target.defaultValue,
-      event.target.checked
+      event.target.checked,
     );
+  }
+  radioGeneralChangeHandler(event, id, idVariable, itemvalores) {
+    const foundElement = this.appVariablesEspecificacionesGeneralGetDto.find(
+      (v) => v.idVariable === idVariable,
+    );
+
+    const valorClickeado =
+      foundElement.appValoresVariablesEspecificacionesGeneralGetDto.find(
+        (v) => v.id === id,
+      );
+
+    // Si es un Radio (flagMultipleValor vacío)
+    if (valorClickeado.flagMultipleValor === '') {
+      if (valorClickeado.cheked) {
+        valorClickeado.cheked = false;
+        valorClickeado.valorReal = '';
+      } else {
+        foundElement.appValoresVariablesEspecificacionesGeneralGetDto.forEach(
+          (dato) => {
+            if (dato.flagMultipleValor === '') {
+              dato.cheked = false;
+              dato.valorReal = '';
+            }
+          },
+        );
+        valorClickeado.cheked = true;
+        valorClickeado.valorReal = valorClickeado.valor;
+      }
+    }
+    // Si es un Checkbox (flagMultipleValor === 'X')
+    else {
+      valorClickeado.cheked = !valorClickeado.cheked;
+      valorClickeado.valorReal = valorClickeado.cheked
+        ? valorClickeado.valor
+        : '';
+    }
   }
 
   findAndUpdate(id, idVariable, prop, newValue) {
@@ -325,7 +503,7 @@ export class EspecificacionesPage implements OnInit {
     const foundElement = this.appVariablesEspecificacionesPartesGetDto.find(
       (valores) => {
         return valores.idVariable === idVariable;
-      }
+      },
     );
 
     //*****************Buscamos elemento del valo de la variable seeccionada******************************* */
@@ -333,7 +511,7 @@ export class EspecificacionesPage implements OnInit {
       foundElement.appValoresVariablesEspecificacionesPartesGetDto.find(
         (valores) => {
           return valores.id === id;
-        }
+        },
       );
     /***************limpiamoss el valor real en todo el arreglo****************************** */
     foundElement.appValoresVariablesEspecificacionesPartesGetDto.map((dato) => {
@@ -353,7 +531,7 @@ export class EspecificacionesPage implements OnInit {
     const foundElement = this.appVariablesEspecificacionesGeneralGetDto.find(
       (valores) => {
         return valores.idVariable === idVariable;
-      }
+      },
     );
     console.log('foundElement', foundElement);
 
@@ -362,7 +540,7 @@ export class EspecificacionesPage implements OnInit {
       foundElement.appValoresVariablesEspecificacionesGeneralGetDto.find(
         (valores) => {
           return valores.id === id;
-        }
+        },
       );
 
     console.log('foundElementValores', foundElementValores);
@@ -382,7 +560,7 @@ export class EspecificacionesPage implements OnInit {
         }
 
         /********Modificamos el valor real co el nuevo valor************* */
-      }
+      },
     );
     if (cheked === false) {
       newValue = '';
@@ -451,23 +629,25 @@ export class EspecificacionesPage implements OnInit {
     }
   }
 
-  selectFrente(frente) {
+  selectFrenteBk(frente) {
     if (frente.codigo == 'S/IMP' || frente.codigo == 'CMYK') {
       this.form.get('tintasFrente').setValue(frente.codigo);
+      console.log('frente.codigo ', frente.codigo);
       //this.validarTintasAfecta('tintasFrente');
-      return;
+      // return;
     }
-    var contieneNuevaTinta = this.form
+    /*var contieneNuevaTinta = this.form
       .get('tintasFrente')
       .value.includes(frente.codigo);
 
     if (contieneNuevaTinta) {
       return;
-    }
+    }*/
     const cantidad = this.cuentaTintas(
       this.form.get('tintasFrente').value,
-      frente.codigo
+      frente.codigo,
     );
+    console.log({ Cantidad: cantidad, CantidadTintas: this.cantTintas });
     if (cantidad > this.cantTintas) {
       return;
     }
@@ -482,7 +662,7 @@ export class EspecificacionesPage implements OnInit {
     this.validarTintasAfecta('tintasFrente');
   }
 
-  selectRespaldo(respaldo) {
+  selectRespaldoBk(respaldo) {
     if (respaldo.codigo == 'S/IMP' || respaldo.codigo == 'CMYK') {
       this.form.get('tintasRespaldo').setValue(respaldo.codigo);
       return;
@@ -495,7 +675,7 @@ export class EspecificacionesPage implements OnInit {
     }
     const cantidad = this.cuentaTintas(
       this.form.get('tintasRespaldo').value,
-      respaldo.codigo
+      respaldo.codigo,
     );
     if (cantidad > this.cantTintas) {
       return;
@@ -532,7 +712,7 @@ export class EspecificacionesPage implements OnInit {
       especificacionesUpdateDto.partesFilter = this.partesFilter;
       console.log(
         '**********especificacionesUpdateDto*****>>>>>>>',
-        especificacionesUpdateDto
+        especificacionesUpdateDto,
       );
       this.showLoading = true;
       this.mensaje = 'Guardando...';
@@ -541,7 +721,7 @@ export class EspecificacionesPage implements OnInit {
         .subscribe((result) => {
           console.log(
             'result en la respuesta de update especificaciones',
-            result
+            result,
           );
 
           this.showLoading = false;

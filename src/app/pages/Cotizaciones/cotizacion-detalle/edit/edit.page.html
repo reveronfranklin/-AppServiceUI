@@ -668,7 +668,10 @@
                     <span class="badge-tecnico">Max: ${{generalService.maskFloat(this.precioMaximo +
                       this.flete)}}</span>
                     <span class="badge-tecnico">ID: {{calculoId}}</span>
-                    <span class="badge-tecnico" *ngIf="mensaje">{{mensaje}}</span>
+                    <div>
+                      <span class="badge-tecnico" *ngIf="mensaje">{{mensaje}}</span>
+                    </div>
+
 
                     <div class="alerta-estimacion" *ngIf="this.concesionString">
                       {{ this.concesionString }}

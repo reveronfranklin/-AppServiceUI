@@ -9,8 +9,8 @@ describe('EspecificacionesPage', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ EspecificacionesPage ],
-      imports: [IonicModule.forRoot()]
+      declarations: [EspecificacionesPage],
+      imports: [IonicModule.forRoot()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(EspecificacionesPage);
