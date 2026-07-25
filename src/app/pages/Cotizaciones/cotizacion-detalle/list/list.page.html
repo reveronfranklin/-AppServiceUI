@@ -59,6 +59,27 @@
           <p> Total US$: {{ gs.maskFloat(item.totalUsd) }} </p>
           <p> Precio Bs.: {{ gs.maskFloat(item.precio) }} </p>
           <p> Total Bs.: {{ gs.maskFloat(item.total) }} </p>
+          <p *ngIf="item.precioBaseConFlete > 0">
+            Precio base US$: {{ gs.maskFloat(item.precioBaseConFlete) }}
+          </p>
+          <p *ngIf="item.porcentajeSobreprecio > 0">
+            Sobre margen: {{ gs.maskFloat(item.porcentajeSobreprecio) }}%
+          </p>
+          <ion-chip *ngIf="item.statusAprobacionDto?.statusString" [color]="item.statusAprobacionColor">
+            <ion-label>{{ item.statusAprobacionDto.statusString }}</ion-label>
+          </ion-chip>
+          <ion-chip *ngIf="item.puedeEnviarAprobacionPorSobreprecio" color="danger">
+            <ion-label>Sobreprecio</ion-label>
+          </ion-chip>
+          <ion-chip *ngIf="item.statusAprobacionSobreprecioDto?.statusString" color="warning">
+            <ion-label>Sobreprecio: {{ item.statusAprobacionSobreprecioDto.statusString }}</ion-label>
+          </ion-chip>
+          <p *ngIf="item.obsSolicitud" class="ion-text-wrap">
+            Obs. solicitud: {{ item.obsSolicitud }}
+          </p>
+          <p *ngIf="item.obsSolicitudSobreprecio" class="ion-text-wrap">
+            Obs. sobreprecio: {{ item.obsSolicitudSobreprecio }}
+          </p>
           <!--  <p> Precio Lista US$: {{gs.maskFloat(item.unitPriceConverted + (this.cotizacion.porcFlete * item.unitPriceConverted)/100,2)}}</p> -->
         </ion-label>
       </ion-item>

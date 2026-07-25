@@ -1,0 +1,227 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Aprobadores por Oficina</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="refresh()" [disabled]="cargando || guardando">
+        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar color="light">
+    <ion-searchbar
+      [(ngModel)]="searchText"
+      (ionChange)="onSearchChange($event)"
+      debounce="600"
+      placeholder="Buscar usuario, oficina o nombre..."
+      animated="true">
+    </ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="aprobadores-page">
+  <ion-grid fixed>
+    <ion-row>
+      <ion-col size="12" size-lg="4">
+        <ion-card class="form-card">
+          <ion-card-header>
+            <ion-card-title>
+              {{ itemEditando ? 'Editar aprobador' : 'Nuevo aprobador' }}
+            </ion-card-title>
+            <ion-card-subtitle>
+              Usuarios responsables por oficina
+            </ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <form [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+              <ion-item>
+                <ion-label position="stacked">Buscar usuario</ion-label>
+                <ion-input
+                  [value]="usuarioSearchText"
+                  (ionChange)="onUsuarioSearchChange($event)"
+                  placeholder="Filtrar usuarios activos">
+                </ion-input>
+              </ion-item>
+
+              <ion-item>
+                <ion-label position="stacked">Usuario</ion-label>
+                <ion-select
+                  formControlName="usuario"
+                  interface="popover"
+                  placeholder="Seleccione usuario">
+                  <ion-select-option
+                    *ngFor="let usuario of usuarios"
+                    [value]="getUsuarioValue(usuario)">
+                    {{ getUsuarioLabel(usuario) }}
+                  </ion-select-option>
+                </ion-select>
+                <ion-note
+                  slot="error"
+                  color="danger"
+                  *ngIf="form.get('usuario').touched && form.get('usuario').invalid">
+                  Usuario es requerido
+                </ion-note>
+              </ion-item>
+
+              <ion-item>
+                <ion-label position="stacked">Buscar oficina</ion-label>
+                <ion-input
+                  [value]="oficinaSearchText"
+                  (ionChange)="onOficinaSearchChange($event)"
+                  placeholder="Filtrar oficinas">
+                </ion-input>
+              </ion-item>
+
+              <ion-item>
+                <ion-label position="stacked">Oficina</ion-label>
+                <ion-select
+                  formControlName="oficina"
+                  interface="popover"
+                  placeholder="Seleccione oficina">
+                  <ion-select-option
+                    *ngFor="let oficina of oficinas"
+                    [value]="oficina.codigoOficina">
+                    {{ getOficinaLabel(oficina) }}
+                  </ion-select-option>
+                </ion-select>
+                <ion-note
+                  slot="error"
+                  color="danger"
+                  *ngIf="form.get('oficina').touched && form.get('oficina').invalid">
+                  Oficina es requerida
+                </ion-note>
+              </ion-item>
+
+              <ion-button
+                type="submit"
+                expand="block"
+                class="ion-margin-top"
+                [disabled]="guardando">
+                <ion-icon
+                  slot="start"
+                  [name]="itemEditando ? 'save-outline' : 'add-circle-outline'">
+                </ion-icon>
+                {{ itemEditando ? 'Guardar cambios' : 'Crear aprobador' }}
+              </ion-button>
+
+              <ion-button
+                type="button"
+                expand="block"
+                fill="clear"
+                color="medium"
+                *ngIf="itemEditando"
+                (click)="cancelarEdicion()">
+                Cancelar edición
+              </ion-button>
+            </form>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="12" size-lg="8">
+        <ion-card>
+          <ion-card-header>
+            <div class="list-header">
+              <div>
+                <ion-card-title>Aprobadores</ion-card-title>
+                <ion-card-subtitle>
+                  {{ totalRecords }} registros
+                </ion-card-subtitle>
+              </div>
+
+              <ion-item lines="none" class="page-size-item">
+                <ion-label>Ver</ion-label>
+                <ion-select
+                  [(ngModel)]="pageSize"
+                  (ionChange)="onPageSizeChange()"
+                  interface="popover">
+                  <ion-select-option *ngFor="let n of listReg" [value]="n">
+                    {{ n }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </div>
+          </ion-card-header>
+
+          <ion-card-content>
+            <div *ngIf="cargando" class="loading-state">
+              <ion-spinner name="crescent"></ion-spinner>
+              <span>Cargando aprobadores...</span>
+            </div>
+
+            <div
+              *ngIf="!cargando && aprobadores.length === 0"
+              class="empty-state ion-text-center ion-padding">
+              <ion-icon name="people-outline"></ion-icon>
+              <p>{{ mensaje || 'No se encontraron aprobadores' }}</p>
+            </div>
+
+            <div class="table-wrapper" *ngIf="!cargando && aprobadores.length > 0">
+              <table class="aprobadores-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Oficina</th>
+                    <th>Nombre oficina</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of aprobadores; trackBy: trackById">
+                    <td>
+                      <strong>{{ item.usuario || 'Sin usuario' }}</strong>
+                    </td>
+                    <td>{{ item.oficina }}</td>
+                    <td>{{ item.nombreOficina || 'Sin oficina' }}</td>
+                    <td>
+                      <ion-button
+                        fill="outline"
+                        size="small"
+                        (click)="editar(item)">
+                        <ion-icon slot="start" name="create-outline"></ion-icon>
+                        Editar
+                      </ion-button>
+                      <ion-button
+                        fill="clear"
+                        color="danger"
+                        size="small"
+                        [disabled]="guardando"
+                        (click)="confirmarEliminar(item)">
+                        <ion-icon slot="start" name="trash-outline"></ion-icon>
+                        Eliminar
+                      </ion-button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="pagination" *ngIf="!cargando && totalPages > 1">
+              <ion-button
+                fill="outline"
+                size="small"
+                [disabled]="currentPage <= 1"
+                (click)="previousPage()">
+                <ion-icon slot="start" name="chevron-back-outline"></ion-icon>
+                Anterior
+              </ion-button>
+              <span>Página {{ currentPage }} de {{ totalPages }}</span>
+              <ion-button
+                fill="outline"
+                size="small"
+                [disabled]="currentPage >= totalPages"
+                (click)="nextPage()">
+                Siguiente
+                <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
+              </ion-button>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

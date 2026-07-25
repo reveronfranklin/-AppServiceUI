@@ -5,13 +5,17 @@ import { AppGeneralQuotesGetDto } from '../models/app-general-quotes-get-dto';
 import { AppDetailQuotesCreateDto } from '../models/app-detail-quotes-create-dto';
 import { AppDetailQuotesUpdateDto } from '../models/app-detail-quotes-update-dto';
 import { AppProductsGetDto } from '../models/app-products-get-dto';
+import { CotizacionDetalleBusinessRulesService } from './cotizacion-detalle-business-rules.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CotizacionFormService {
 
-  constructor(private fb: FormBuilder) { }
+  constructor(
+    private fb: FormBuilder,
+    private detalleBusinessRules: CotizacionDetalleBusinessRulesService,
+  ) { }
 
   buildForm(): FormGroup {
     return this.fb.group({
@@ -33,6 +37,7 @@ export class CotizacionFormService {
       diasEntrega: [0, [Validators.required, Validators.min(1)]],
       observaciones: ['', [Validators.maxLength(200)]],
       obsSolicitud: ['', []],
+      obsSolicitudSobreprecio: ['', []],
       cantidadSolicitada: [0, Validators.required],
       condicionPago: [40, [Validators.required]],
       subCategoriaId: ['', []],
@@ -72,6 +77,10 @@ export class CotizacionFormService {
         diasEntrega: item.diasEntrega,
         observaciones: item.observaciones,
         obsSolicitud: item.obsSolicitud,
+        obsSolicitudSobreprecio:
+          item.appSolicitudAprobacionDto?.observacionSolicitante ||
+          item.obsSolicitudSobreprecio ||
+          '',
         forma: item.forma || '',
         salida: item.salida || '',
         presentacion: item.presentacion || ''
@@ -134,10 +143,11 @@ export class CotizacionFormService {
     dto.totalUsd = form.get('totalUsd').value;
     dto.precioLista = unitPriceBaseProduction;
     dto.solicitarPrecio = solicitarPrecio;
-    dto.obsSolicitud = form.get('obsSolicitud').value;
-    if (appProduct?.requiereEstimacion) {
-      dto.obsSolicitud = '***SOLICITUD DE ESTIMACION****' + (dto.obsSolicitud || '');
-    }
+    dto.obsSolicitud = this.detalleBusinessRules.prepararObservacionSolicitudPrecio(
+      form.get('obsSolicitud').value,
+      appProduct?.requiereEstimacion === true,
+    );
+    dto.obsSolicitudSobreprecio = form.get('obsSolicitudSobreprecio').value;
     dto.medidaBasica = form.get('medidaBasica').value;
     dto.medidaOpuesta = form.get('medidaOpuesta').value;
     dto.valorConvertido = form.get('cantidad').value;
@@ -183,10 +193,11 @@ export class CotizacionFormService {
     dto.totalUsd = form.get('totalUsd').value;
     dto.precioLista = unitPriceBaseProduction;
     dto.solicitarPrecio = solicitarPrecio;
-    dto.obsSolicitud = form.get('obsSolicitud').value;
-    if (item.appProductsGetDto?.requiereEstimacion) {
-      dto.obsSolicitud = '***SOLICITUD DE ESTIMACION****' + (dto.obsSolicitud || '');
-    }
+    dto.obsSolicitud = this.detalleBusinessRules.prepararObservacionSolicitudPrecio(
+      form.get('obsSolicitud').value,
+      item.appProductsGetDto?.requiereEstimacion === true,
+    );
+    dto.obsSolicitudSobreprecio = form.get('obsSolicitudSobreprecio').value;
     dto.medidaBasica = form.get('medidaBasica').value;
     dto.medidaOpuesta = form.get('medidaOpuesta').value;
     dto.valorConvertido = form.get('cantidad').value;

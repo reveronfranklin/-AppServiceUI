@@ -1,58 +1,210 @@
-.bold{
-    font-weight: bold;    
+:host {
+  --page-bg: linear-gradient(180deg, #f6f9fc 0%, #eef3f8 100%);
+  --panel-border: #d8e1ec;
+  --title-color: #17324d;
+  --muted-color: #5f7187;
+  --accent-bg: #e8f2ff;
+  --success-bg: #eaf8ef;
+  --warning-bg: #fff3c8;
 }
 
-.listatasa{
-    font-weight: bold;
-    background-color: yellow !important;
-    color: black;
-    padding: 4px;
+.search-page {
+  --background: var(--page-bg);
 }
 
-.center {
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-  width: 50%;
+.search-page ion-grid[fixed] {
+  max-width: 1320px;
   padding-top: 10px;
-  padding-bottom: 10px;
+  padding-bottom: 18px;
 }
 
-.inputValue{
-  border-radius: 5px;
+.header-loading {
+  background: #f5f8ff;
+  color: #1f4b7f;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #dbe5f2;
+  padding: 4px 0;
 }
 
-
-.containerCard {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  -moz-transform: translateX(-50%) translateY(-50%);
-  -webkit-transform: translateX(-50%) translateY(-50%);
-  transform: translateX(-50%) translateY(-50%);
-}
-.containerCardNew {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.contador{
-  color: rgb(243, 183, 183);
-  font-size: small;
-  padding-right: 25px;
-  padding-left: 25px;
+.control-card,
+.panel-card {
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 8px 24px rgba(14, 40, 74, 0.08);
+  margin-bottom: 12px;
+  animation: cardEnter 220ms ease-out;
 }
 
-.small-list {
-
-  max-height: 400px;
-
-}
-ion-selectCustom{
-    max-width: 500px !important;// your choice :)
+.field-item {
+  --inner-padding-end: 8px;
+  --padding-start: 0;
+  --min-height: 64px;
 }
 
-ion-select{
-    max-width: 70% !important;// your choice :)
+.field-item ion-label[position='stacked'] {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #47607b;
 }
 
+.selected-product {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed #d2ddeb;
+}
+
+.product-chip {
+  background: var(--accent-bg);
+  color: var(--title-color);
+  border: 1px solid #c7ddff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.inputValue {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #cad6e4;
+  background: #ffffff;
+  color: #1d2b3a;
+}
+
+.inputValue:focus {
+  outline: none;
+  border-color: #4d8fd6;
+  box-shadow: 0 0 0 3px rgba(77, 143, 214, 0.15);
+}
+
+.result-panel {
+  margin-top: 10px;
+}
+
+.status-message {
+  display: inline-block;
+  background: var(--warning-bg);
+  color: #4b3b00;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.price-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #c9e8d5;
+  background: var(--success-bg);
+  color: #124225;
+  font-weight: 600;
+}
+
+ion-card-title {
+  color: var(--title-color);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.variable-row {
+  border: 1px solid #e4ebf4;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  --background: #fbfcfe;
+}
+
+.variable-label {
+  font-size: 0.84rem;
+  margin-right: 8px;
+}
+
+.variable-row ion-select {
+  min-width: 48%;
+}
+
+.products-list ion-item {
+  --padding-start: 8px;
+  --inner-padding-end: 8px;
+  --min-height: 82px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #e3e9f2;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.products-list ion-item:hover {
+  transform: translateY(-1px);
+  border-color: #c8d8ea;
+  box-shadow: 0 6px 14px rgba(23, 50, 77, 0.08);
+}
+
+.products-list h3 {
+  margin: 0;
+  color: #17324d;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.products-list p {
+  margin: 4px 0 0;
+  color: var(--muted-color);
+  font-size: 0.82rem;
+}
+
+.products-list ion-thumbnail {
+  --size: 62px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f6fb;
+}
+
+.products-list.compact ion-item {
+  --min-height: 98px;
+}
+
+.bold {
+  font-weight: bold;
+}
+
+.listatasa {
+  font-weight: bold;
+  background-color: yellow !important;
+  color: black;
+  padding: 4px;
+}
+
+@media (max-width: 767px) {
+  ion-grid[fixed] {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .field-item {
+    --min-height: 60px;
+  }
+
+  .price-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .variable-row ion-select {
+    min-width: 42%;
+  }
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

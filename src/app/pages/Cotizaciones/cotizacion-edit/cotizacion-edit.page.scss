@@ -9,3 +9,21 @@
   padding-right: 25px;
   padding-left: 25px;
 }
+
+ion-modal.consulta-rif-inline-modal {
+  --width: min(96vw, 1280px);
+  --height: 92vh;
+  --max-width: 1280px;
+  --max-height: 92vh;
+  --border-radius: 6px;
+}
+
+@media (max-width: 768px) {
+  ion-modal.consulta-rif-inline-modal {
+    --width: 100vw;
+    --height: 100vh;
+    --max-width: 100vw;
+    --max-height: 100vh;
+    --border-radius: 0;
+  }
+}

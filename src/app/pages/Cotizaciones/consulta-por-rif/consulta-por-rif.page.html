@@ -1,0 +1,399 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start" *ngIf="!modalMode">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Consulta Por RIF</ion-title>
+    <ion-buttons slot="end" *ngIf="modalMode">
+      <ion-button (click)="cerrarModal()">Cerrar</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Buscar</ion-card-title>
+    </ion-card-header>
+    <ion-card-content>
+      <form [formGroup]="form" (ngSubmit)="consultar()">
+        <div class="autocomplete-container">
+          <ion-item>
+            <ion-label position="stacked">RIF o Razon Social</ion-label>
+            <ion-input
+              formControlName="rif"
+              placeholder="Ej: J-30137013-9 o razon social"
+              (ionBlur)="onRifBlur()"
+              (ionFocus)="onRifFocus()"
+            ></ion-input>
+            <ion-spinner name="dots" slot="end" *ngIf="buscandoSugerencias"></ion-spinner>
+          </ion-item>
+
+          <ion-list class="autocomplete-suggestions" *ngIf="mostrarSugerencias && sugerencias.length > 0">
+            <ion-item
+              button
+              *ngFor="let item of sugerencias"
+              (mousedown)="seleccionarSugerencia(item)"
+            >
+              <ion-label>
+                <h3>{{ item.rif }} - {{ item.nombre }}</h3>
+                <p>Codigo: {{ item.codigo }}</p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </div>
+        <ion-note color="danger" *ngIf="form.get('rif')?.touched && form.get('rif')?.invalid">
+          Ingrese un RIF valido en formato V/J/E/G/P-12345678-9.
+        </ion-note>
+
+        <ion-button
+          type="submit"
+          expand="block"
+          class="ion-margin-top"
+          [disabled]="loading"
+        >
+          {{ loading ? 'Consultando...' : 'Consultar' }}
+        </ion-button>
+      </form>
+
+      <ion-text color="danger" *ngIf="error">
+        <p class="ion-margin-top">{{ error }}</p>
+      </ion-text>
+    </ion-card-content>
+  </ion-card>
+
+  <ng-container *ngIf="consultaRealizada">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-button fill="clear" (click)="toggleSeccion('clientes')">
+            Clientes ({{ clientes.length }})
+            <ion-icon
+              slot="end"
+              [name]="seccionesExpandidas.clientes ? 'chevron-up-outline' : 'chevron-down-outline'"
+            ></ion-icon>
+          </ion-button>
+        </ion-card-title>
+        <div class="export-actions" *ngIf="clientes.length > 0">
+          <ion-button size="small" fill="outline" (click)="exportarExcel('clientes')">
+            Excel
+          </ion-button>
+          <ion-button size="small" fill="outline" (click)="exportarCsv('clientes')">
+            CSV
+          </ion-button>
+        </div>
+      </ion-card-header>
+      <ion-card-content *ngIf="seccionesExpandidas.clientes">
+        <div class="table-container" *ngIf="clientes.length > 0; else emptyClientes">
+          <table class="rif-table">
+            <thead>
+              <tr>
+                <th>Codigo</th>
+                <th>Nombre</th>
+                <th>Vendedor 1</th>
+                <th>Nombre Vendedor</th>
+                <th>Fecha Apertura</th>
+                <th>Fecha Ultima Factura</th>
+                <th>Fecha Modificacion</th>
+                <th>Flag Inactivo</th>
+                <th>Oficina</th>
+                <th>Flag Atendido</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of clientes">
+                <td>{{ item.codigo }}</td>
+                <td>{{ item.nombre || 'N/A' }}</td>
+                <td>{{ item.vendedor1 || 'N/A' }}</td>
+                <td>{{ item.nombreVendedor || 'N/A' }}</td>
+                <td>{{ item.fechaApertura ? (item.fechaApertura | date:'dd/MM/yyyy') : 'N/A' }}</td>
+                <td>{{ item.fechaUltimaFactura ? (item.fechaUltimaFactura | date:'dd/MM/yyyy') : 'N/A' }}</td>
+                <td>{{ item.fechaModificacion ? (item.fechaModificacion | date:'dd/MM/yyyy HH:mm') : 'N/A' }}</td>
+                <td>{{ item.flagInactivo?.trim() || 'N/A' }}</td>
+                <td>{{ item.oficina || 'N/A' }}</td>
+                <td>{{ item.flagAtendido?.trim() || 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #emptyClientes>
+          <p>No hay clientes para este RIF.</p>
+        </ng-template>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-button fill="clear" (click)="toggleSeccion('estadisticas')">
+            Estadisticas ({{ estadisticasFiltradas.length }} de {{ estadisticas.length }})
+            <ion-icon
+              slot="end"
+              [name]="seccionesExpandidas.estadisticas ? 'chevron-up-outline' : 'chevron-down-outline'"
+            ></ion-icon>
+          </ion-button>
+        </ion-card-title>
+        <div class="export-actions" *ngIf="estadisticasFiltradas.length > 0">
+          <ion-button size="small" fill="outline" (click)="exportarExcel('estadisticas')">
+            Excel
+          </ion-button>
+          <ion-button size="small" fill="outline" (click)="exportarCsv('estadisticas')">
+            CSV
+          </ion-button>
+        </div>
+      </ion-card-header>
+      <ion-card-content *ngIf="seccionesExpandidas.estadisticas">
+        <div class="filtro-orden filtros-inline" *ngIf="estadisticas.length > 0">
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Orden</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="ordenFiltros.estadisticas"
+              [ngModelOptions]="{ standalone: true }"
+              inputmode="numeric"
+              placeholder="Ej: 1950"
+            />
+          </div>
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Cotizacion</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="cotizacionFiltros.estadisticas"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Ej: COT-0001"
+            />
+          </div>
+        </div>
+        <div class="table-container" *ngIf="estadisticasFiltradas.length > 0; else emptyEstadisticas">
+          <table class="rif-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Cliente</th>
+                <th>Cotizacion</th>
+                <th>Orden</th>
+                <th>Anio</th>
+                <th>Mes</th>
+                <th>Nombre Vendedor</th>
+                <th>Nombre Producto</th>
+                <th>Millares P</th>
+                <th>Venta Dol Ref</th>
+                <th>Fiscal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of estadisticasFiltradas">
+                <td>{{ item.nombre || 'N/A' }}</td>
+                <td>{{ item.cliente }}</td>
+                <td>{{ item.cotizacion || 'N/A' }}</td>
+                <td>{{ item.orden }}</td>
+                <td>{{ item.anio }}</td>
+                <td>{{ item.mes }}</td>
+                <td>{{ item.nombreVendedor || 'N/A' }}</td>
+                <td>{{ item.nombreProducto || 'N/A' }}</td>
+                <td>{{ item.millaresP | number:'1.2-2' }}</td>
+                <td>{{ item.ventaDolRef | number:'1.2-2' }}</td>
+                <td>{{ item.fiscal || 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #emptyEstadisticas>
+          <p>No hay estadisticas para este RIF.</p>
+        </ng-template>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-button fill="clear" (click)="toggleSeccion('cotizaciones')">
+            Cotizaciones ({{ cotizacionesFiltradas.length }} de {{ cotizaciones.length }})
+            <ion-icon
+              slot="end"
+              [name]="seccionesExpandidas.cotizaciones ? 'chevron-up-outline' : 'chevron-down-outline'"
+            ></ion-icon>
+          </ion-button>
+        </ion-card-title>
+        <div class="export-actions" *ngIf="cotizacionesFiltradas.length > 0">
+          <ion-button size="small" fill="outline" (click)="exportarExcel('cotizaciones')">
+            Excel
+          </ion-button>
+          <ion-button size="small" fill="outline" (click)="exportarCsv('cotizaciones')">
+            CSV
+          </ion-button>
+        </div>
+      </ion-card-header>
+      <ion-card-content *ngIf="seccionesExpandidas.cotizaciones">
+        <div class="filtro-orden filtros-inline" *ngIf="cotizaciones.length > 0">
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Orden</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="ordenFiltros.cotizaciones"
+              [ngModelOptions]="{ standalone: true }"
+              inputmode="numeric"
+              placeholder="Ej: 1950"
+            />
+          </div>
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Cotizacion</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="cotizacionFiltros.cotizaciones"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Ej: COT-0001"
+            />
+          </div>
+        </div>
+        <div class="table-container" *ngIf="cotizacionesFiltradas.length > 0; else emptyCotizaciones">
+          <table class="rif-table">
+            <thead>
+              <tr>
+                <th>Cotizacion</th>
+                <th>Cliente</th>
+                <th>Anio</th>
+                <th>Mes</th>
+                <th>Sub Categoria</th>
+                <th>Producto</th>
+                <th>Vendedor</th>
+                <th>Descripcion</th>
+                <th>Motivo</th>
+                <th>Orden</th>
+                <th>Total Propuesta USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of cotizacionesFiltradas">
+                <td>{{ item.cotizacion || 'N/A' }}</td>
+                <td>{{ item.cliente || 'N/A' }}</td>
+                <td>{{ item.anio }}</td>
+                <td>{{ item.mes }}</td>
+                <td>{{ item.subCategoria || 'N/A' }}</td>
+                <td>{{ item.producto || 'N/A' }}</td>
+                <td>{{ item.vendedor || 'N/A' }}</td>
+                <td>{{ item.descripcion || 'N/A' }}</td>
+                <td>{{ item.motivo || 'N/A' }}</td>
+                <td>{{ item.orden || 'N/A' }}</td>
+                <td>{{ item.totalPropuestaUsd | number:'1.2-4' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #emptyCotizaciones>
+          <p>No hay cotizaciones para este RIF.</p>
+        </ng-template>
+      </ion-card-content>
+    </ion-card>
+
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-button fill="clear" (click)="toggleSeccion('numeracionesFiscales')">
+            Numeracion Fiscal ({{ numeracionesFiscalesFiltradas.length }} de {{ numeracionesFiscales.length }})
+            <ion-icon
+              slot="end"
+              [name]="seccionesExpandidas.numeracionesFiscales ? 'chevron-up-outline' : 'chevron-down-outline'"
+            ></ion-icon>
+          </ion-button>
+        </ion-card-title>
+        <div class="export-actions" *ngIf="numeracionesFiscalesFiltradas.length > 0">
+          <ion-button
+            size="small"
+            fill="outline"
+            (click)="exportarExcel('numeracionesFiscales')"
+          >
+            Excel
+          </ion-button>
+          <ion-button
+            size="small"
+            fill="outline"
+            (click)="exportarCsv('numeracionesFiscales')"
+          >
+            CSV
+          </ion-button>
+        </div>
+      </ion-card-header>
+      <ion-card-content *ngIf="seccionesExpandidas.numeracionesFiscales">
+        <div class="filtro-orden filtros-inline" *ngIf="numeracionesFiscales.length > 0">
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Orden</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="ordenFiltros.numeracionesFiscales"
+              [ngModelOptions]="{ standalone: true }"
+              inputmode="numeric"
+              placeholder="Ej: 1950"
+            />
+          </div>
+          <div class="filtro-item">
+            <label class="filtro-label">Filtrar por Cotizacion</label>
+            <input
+              class="filtro-input"
+              type="text"
+              [(ngModel)]="cotizacionFiltros.numeracionesFiscales"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Ej: COT-0001"
+            />
+          </div>
+        </div>
+        <div class="table-container" *ngIf="numeracionesFiscalesFiltradas.length > 0; else emptyNumeracion">
+          <table class="rif-table">
+            <thead>
+              <tr>
+                <th>Id Numeracion</th>
+                <th>RIF</th>
+                <th>Cotizacion</th>
+                <th>Orden</th>
+                <th>Copy</th>
+                <th>Serie Control Desde</th>
+                <th>Control Desde</th>
+                <th>Serie Control Hasta</th>
+                <th>Control Hasta</th>
+                <th>Serie Formato Desde</th>
+                <th>Formato Desde</th>
+                <th>Serie Formato Hasta</th>
+                <th>Formato Hasta</th>
+                <th>Tipo Documento</th>
+                <th>Longitud Mascara</th>
+                <th>Longitud Mascara Formato</th>
+                <th>Usuario Agrega</th>
+                <th>Fecha Agrega</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of numeracionesFiscalesFiltradas">
+                <td>{{ item.idNumeracion }}</td>
+                <td>{{ item.rif || 'N/A' }}</td>
+                <td>{{ item.cotizacion || 'N/A' }}</td>
+                <td>{{ item.orden }}</td>
+                <td>{{ item.copy }}</td>
+                <td>{{ item.numeroSerieControlDesde?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroControlDesde?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroSerieControlHasta?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroControlHasta?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroSerieFormatoDesde?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroFormatoDesde?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroSerieFormatoHasta?.trim() || 'N/A' }}</td>
+                <td>{{ item.numeroFormatoHasta?.trim() || 'N/A' }}</td>
+                <td>{{ item.tipoDocumento || 'N/A' }}</td>
+                <td>{{ item.longitudMascara }}</td>
+                <td>{{ item.longitudMascaraFormato }}</td>
+                <td>{{ item.usuarioAgrega || 'N/A' }}</td>
+                <td>{{ item.fechaAgrega ? (item.fechaAgrega | date:'dd/MM/yyyy HH:mm') : 'N/A' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #emptyNumeracion>
+          <p>No hay numeracion fiscal para este RIF.</p>
+        </ng-template>
+      </ion-card-content>
+    </ion-card>
+  </ng-container>
+</ion-content>

@@ -18,7 +18,7 @@ export class GeneralCobranzaService {
     this.controller = 'GeneralCobranzas/';
     this.accionPath = "GetAllGeneralCobranzas";
 
-    return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
+    return this.http.post<any>(this.gensvc.basePathVertical + this.controller + this.accionPath, JSON.stringify(data)).pipe(
     );
   }
   GetGeneralCobranzaPendienteVerificarPago(data): Observable<any> {
@@ -40,7 +40,7 @@ export class GeneralCobranzaService {
     this.controller = 'GeneralCobranzas/';
     this.accionPath = "GetGeneralCobranzasByDocumento";
 
-    return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
+    return this.http.post<any>(this.gensvc.basePathVertical + this.controller + this.accionPath, JSON.stringify(data)).pipe(
     );
   }
 
@@ -48,15 +48,22 @@ export class GeneralCobranzaService {
     this.controller = 'GeneralCobranzas/';
     this.accionPath = "Update";
 
-    return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
+    return this.http.post<any>(this.gensvc.basePathVertical + this.controller + this.accionPath, JSON.stringify(data)).pipe(
     );
+  }
+
+  UpdateSellerInformation(data): Observable<any> {
+    return this.http.post<any>(
+      this.gensvc.basePathVertical + 'cobranzas/general/update-seller-information',
+      JSON.stringify(data)
+    ).pipe();
   }
 
   InsertGeneralCobranzas(data): Observable<any> {
     this.controller = 'GeneralCobranzas/';
     this.accionPath = "Insert";
 
-    return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
+    return this.http.post<any>(this.gensvc.basePathVertical + this.controller + this.accionPath, JSON.stringify(data)).pipe(
     );
   }
 

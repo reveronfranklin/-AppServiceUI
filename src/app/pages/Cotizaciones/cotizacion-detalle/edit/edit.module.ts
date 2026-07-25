@@ -11,6 +11,7 @@ import { EditPage } from './edit.page';
 
 import { SharedModule } from '../../../../shared/shared.module';
 import { CurrencyMaskModule } from "ng2-currency-mask";
+import { DocumentacionFuncionalDetalleCotizacionComponent } from './documentacion-funcional-detalle-cotizacion/documentacion-funcional-detalle-cotizacion.component';
 
 @NgModule({
   imports: [
@@ -27,6 +28,9 @@ import { CurrencyMaskModule } from "ng2-currency-mask";
 
     //NumberInputComponent
 ],
-  declarations: [EditPage]
+  declarations: [
+    EditPage,
+    DocumentacionFuncionalDetalleCotizacionComponent
+  ]
 })
 export class EditPageModule { }

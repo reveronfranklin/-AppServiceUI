@@ -35,7 +35,17 @@
       <ion-label position="floating">Contraseña</ion-label>
       <ion-input [type]="passwordType" clearOnEdit="false" [(ngModel)]="usuario.Password" name="password"
         required></ion-input>
-      <ion-icon slot="end" [name]="passwordIcon" class="passwordIcon" (click)='hideShowPassword()'></ion-icon>
+      <ion-button
+        slot="end"
+        fill="clear"
+        type="button"
+        class="password-toggle"
+        [title]="passwordType === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña'"
+        (click)="hideShowPassword()"
+        [attr.aria-label]="passwordType === 'password' ? 'Mostrar contraseña' : 'Ocultar contraseña'"
+      >
+        <ion-icon slot="icon-only" [name]="passwordIcon" class="passwordIcon"></ion-icon>
+      </ion-button>
     </ion-item>
 
   </form>

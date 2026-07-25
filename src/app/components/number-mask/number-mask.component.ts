@@ -24,10 +24,6 @@ export class NumberMaskComponent implements OnInit, AfterViewInit {
     constructor() { }
 
     ngOnInit() {
-
-        console.log("componente, monto=", this.monto)
-        console.log("componente, precision=", this.precision)
-
         this.montoRecibido = this.monto     
         
         if (this.tipo == "I") {
@@ -71,9 +67,6 @@ export class NumberMaskComponent implements OnInit, AfterViewInit {
 
 
     change($event: KeyboardEvent) { 
-       
-        console.log("***" + this.inputField.value + "***")
-
         //tomo el valor del input control
         var numero = this.inputField.value
 

@@ -31,8 +31,8 @@
       <ion-col size="6" size-md="3">
         <ion-item lines="none">
           <ion-label position="stacked">Estatus</ion-label>
-          <ion-select (ionChange)="optionsStatus($event)" interface="popover">
-            <ion-select-option *ngFor="let s of listEstatus" [value]="s">{{s.descripcion}}</ion-select-option>
+          <ion-select [(ngModel)]="statusId" (ionChange)="optionsStatus($event)" interface="popover">
+            <ion-select-option *ngFor="let s of listEstatus" [value]="s.id">{{s.descripcion}}</ion-select-option>
           </ion-select>
         </ion-item>
       </ion-col>
@@ -115,12 +115,12 @@
 
   <ion-modal [keepContentsMounted]="true">
     <ng-template>
-      <ion-datetime id="fechaDesde" presentation="date" [(ngModel)]="fechaDesde" (ionChange)="refresh()"></ion-datetime>
+      <ion-datetime id="fechaDesde" presentation="date" [(ngModel)]="fechaDesde" (ionChange)="onFechaDesdeChange($event)"></ion-datetime>
     </ng-template>
   </ion-modal>
   <ion-modal [keepContentsMounted]="true">
     <ng-template>
-      <ion-datetime id="fechaHasta" presentation="date" [(ngModel)]="fechaHasta" (ionChange)="refresh()"></ion-datetime>
+      <ion-datetime id="fechaHasta" presentation="date" [(ngModel)]="fechaHasta" (ionChange)="onFechaHastaChange($event)"></ion-datetime>
     </ng-template>
   </ion-modal>
 </ion-content>

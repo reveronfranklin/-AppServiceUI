@@ -51,6 +51,7 @@ export class AppGeneralQuotesGetDto {
   orden: number;
   productosCotizados: string;
   ordenAnterior: number;
+  clienteRequiereEstimacion: boolean;
   mensajeSolicitarPrecio: string;
   appOrdenProductoRepeticionGetDto: AppOrdenProductoRepeticionGetDto;
   //ordenAnteriorAppProductConversionGetDto:AppProductConversionGetDto;

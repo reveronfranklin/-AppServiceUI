@@ -347,6 +347,25 @@
     <ion-title>{{tituloUi}}</ion-title>
 
     <ion-buttons slot="end">
+      <ion-button
+        *ngIf="editable"
+        (click)="nuevoProducto()"
+        [disabled]="!puedeAdicionarNuevoDetalle()"
+        size="large"
+        [title]="getMensajeAdicionarDetalle()"
+        aria-label="Nuevo producto"
+      >
+        <ion-icon name="add-circle-outline" size="large"></ion-icon>
+      </ion-button>
+
+      <ion-button
+        (click)="mostrarDocumentacionFuncional()"
+        size="large"
+        title="Reglas funcionales"
+        aria-label="Ver reglas funcionales"
+      >
+        <ion-icon name="help-circle-outline" size="large"></ion-icon>
+      </ion-button>
 
       <div *ngIf="!solicitarPrecio">
 
@@ -381,13 +400,11 @@
 </ion-header>
 
 <ion-content>
+  <div class="detalle-layout">
+  <div has-header="true" padding="true" class="detalle-form-panel">
 
 
-
-  <div has-header="true" padding="true">
-
-
-    <div class="header-card" *ngIf="this.uiImageLink !== ''">
+    <div class="header-card">
 
       <h4 class="header-title bold" *ngIf="this.appProduct !== null">
         <ion-icon name="document-text-outline" color="primary"></ion-icon>
@@ -398,12 +415,16 @@
         <small style="color: #666; font-size: 0.9rem;">{{ uiNombreProductoInCard }}</small>
         <div class="tasa-badge bold">
           <ion-icon name="trending-up-outline"></ion-icon>
-          Tasa: {{ generalService.maskFloat(uiTasa, 4) }}
+          Tasa: {{ generalService.maskFloat(uiTasa || tasa, 4) }}
         </div>
       </h4>
 
       <h4 class="header-title bold" *ngIf="this.appProduct === null">
         {{this.cotizacion.cotizacion}}
+        <div class="tasa-badge bold">
+          <ion-icon name="trending-up-outline"></ion-icon>
+          Tasa: {{ generalService.maskFloat(uiTasa || tasa, 4) }}
+        </div>
       </h4>
 
       <div class="sales-unit-info" *ngIf="cantidadPorUnidad > 0">
@@ -427,8 +448,8 @@
     </div>
 
     <ion-card class="containerCardNew">
-      <form [formGroup]="form" novalidate style="display: flex; justify-content: center;">
-        <ion-grid>
+      <form [formGroup]="form" novalidate class="detalle-form">
+        <ion-grid class="detalle-form-grid">
           <ion-row *ngIf="false">
             <ion-col size-lg="6" size-md="6" size-sm="6" size="12">
               <ion-item>
@@ -440,11 +461,8 @@
           </ion-row>
 
 
-          <!-- Orden Anterior -->
-
-
-          <ion-row *ngIf="subCategoryid !== 2">
-            <ion-col size="12">
+          <ion-row class="compact-row">
+            <ion-col *ngIf="subCategoryid !== 2" size-lg="4" size-md="4" size-sm="12" size="12">
               <div style="padding: 0 5px;">
                 <ion-label position="stacked" class="bold measure-label">
                   <ion-icon name="time-outline"></ion-icon> Orden Anterior
@@ -473,11 +491,8 @@
                 </p>
               </div>
             </ion-col>
-          </ion-row>
 
-
-          <ion-row>
-            <ion-col size-lg="6" size-md="6" size-sm="6" size="6">
+            <ion-col [sizeLg]="subCategoryid !== 2 ? '4' : '6'" [sizeMd]="subCategoryid !== 2 ? '4' : '6'" size-sm="6" size="12">
               <div style="padding: 0 5px;">
                 <ion-label position="stacked" class="bold measure-label">Condición de Pago</ion-label>
                 <div class="custom-select-container">
@@ -493,13 +508,13 @@
               </div>
             </ion-col>
 
-            <ion-col size-lg="6" size-md="6" size-sm="6" size="6">
+            <ion-col [sizeLg]="subCategoryid !== 2 ? '4' : '6'" [sizeMd]="subCategoryid !== 2 ? '4' : '6'" size-sm="6" size="12">
               <div style="padding: 0 5px;">
                 <ion-label position="stacked" class="bold measure-label">Categoría</ion-label>
                 <div class="custom-select-container">
                   <ion-select formControlName="subCategoriaId" [(ngModel)]="subCategoryid"
                     (ionChange)="onChangeSubCategoriaId($event)" placeholder="Seleccione..." interface="popover"
-                    class="custom-select">
+                    class="custom-select" [disabled]="this.operacion === 1">
 
                     <ion-select-option [disabled]="this.cotizacion.ordenAnterior > 0"
                       *ngFor="let item of appSubcategoryGetDto" [value]="item.id">
@@ -515,14 +530,15 @@
 
 
 
-          <ion-col size="12">
+          <ion-row class="compact-row">
+          <ion-col size-lg="8" size-md="8" size-sm="12" size="12">
             <div style="padding: 0 5px;">
               <ion-label position="stacked" class="bold measure-label">
                 Descripción del Producto
               </ion-label>
 
               <div class="description-container">
-                <textarea class="description-textarea" rows="3" formControlName="nombreComercialProducto"
+                <textarea class="description-textarea" rows="2" formControlName="nombreComercialProducto"
                   placeholder="Ingrese el nombre o descripción comercial..." maxlength="200">
                 </textarea>
 
@@ -535,7 +551,7 @@
                   <div style="display: flex;">
 
                     <ng-container *ngIf="subCategoryid !== 2">
-                      <ion-button *ngIf="this.cotizacion.ordenAnterior === 0" (click)="onBuscarProducto()" fill="solid"
+                      <ion-button *ngIf="this.operacion === 0 && this.cotizacion.ordenAnterior === 0" (click)="onBuscarProducto()" fill="solid"
                         size="small" class="btn-description-action" color="primary">
                         <ion-icon slot="start" name="search-outline"></ion-icon>
                         Catálogo
@@ -549,7 +565,7 @@
                       </ion-button>
                     </ng-container>
 
-                    <ion-button *ngIf="subCategoryid === 2 || subCategoryid === 17" (click)="onBuscarProductoGeneral()"
+                    <ion-button *ngIf="this.operacion === 0 && (subCategoryid === 2 || subCategoryid === 17)" (click)="onBuscarProductoGeneral()"
                       fill="solid" size="small" class="btn-description-action" color="secondary">
                       <ion-icon slot="start" name="search-outline"></ion-icon>
                       Búsqueda Gral.
@@ -558,11 +574,15 @@
                   </div>
                 </div>
               </div>
+              <p style="font-size: 0.7rem; color: #666; margin: 4px 5px;" *ngIf="this.operacion === 1">
+                <ion-icon name="lock-closed-outline"></ion-icon>
+                El producto asociado no se modifica; puede ajustar la descripción comercial.
+              </p>
             </div>
           </ion-col>
 
 
-          <ion-col size="12">
+          <ion-col size-lg="4" size-md="4" size-sm="12" size="12">
             <ion-item lines="none" class="measure-item">
               <div style="width: 100%;">
                 <ion-label position="stacked" class="bold measure-label">Unidad de Medida</ion-label>
@@ -576,6 +596,7 @@
               </div>
             </ion-item>
           </ion-col>
+          </ion-row>
 
 
 
@@ -583,8 +604,8 @@
 
 
           <!-- Medidas -->
-          <ion-row *ngIf="this.requiereDatosEntrada" style="margin-top: 10px;">
-            <ion-col size="6">
+          <ion-row class="compact-row">
+            <ion-col *ngIf="this.requiereDatosEntrada" size-lg="3" size-md="3" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Básica (cm)</ion-label>
@@ -595,7 +616,7 @@
               </ion-item>
             </ion-col>
 
-            <ion-col size="6">
+            <ion-col *ngIf="this.requiereDatosEntrada" size-lg="3" size-md="3" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Opuesta (cm)</ion-label>
@@ -605,16 +626,8 @@
                 </div>
               </ion-item>
             </ion-col>
-          </ion-row>
 
-
-
-
-
-
-
-          <ion-row>
-            <ion-col size="6">
+            <ion-col [sizeLg]="requiereDatosEntrada ? '3' : '6'" [sizeMd]="requiereDatosEntrada ? '3' : '6'" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Cant. {{ descripcionSalesUnit
@@ -626,7 +639,7 @@
               </ion-item>
             </ion-col>
 
-            <ion-col size="6">
+            <ion-col [sizeLg]="requiereDatosEntrada ? '3' : '6'" [sizeMd]="requiereDatosEntrada ? '3' : '6'" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Cant. {{ decripcionProductionUnit
@@ -656,8 +669,8 @@
 
 
 
-          <ion-row>
-            <ion-col size-lg="6" size-md="6" size-sm="6" size="12">
+          <ion-row class="compact-row">
+            <ion-col size-lg="5" size-md="5" size-sm="12" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Precio {{ decripcionProductionUnit }}
@@ -665,8 +678,7 @@
 
                   <div class="info-tecnica-container">
                     <span class="badge-tecnico">Min: ${{this.newPrecioMasFlete}}</span>
-                    <span class="badge-tecnico">Max: ${{generalService.maskFloat(this.precioMaximo +
-                      this.flete)}}</span>
+                    <span class="badge-tecnico">Max: ${{getPrecioMaximoMasFleteMasked()}}</span>
                     <span class="badge-tecnico">ID: {{calculoId}}</span>
                     <div>
                       <span class="badge-tecnico" *ngIf="mensaje">{{mensaje}}</span>
@@ -680,93 +692,33 @@
                     <div class="alerta-estimacion" *ngIf="this.appProduct && this.appProduct.requiereEstimacion">
                       <ion-icon name="alert-circle-outline"></ion-icon> Requiere aprobación por estimación
                     </div>
+
+                    <div class="alerta-estimacion" *ngIf="porDebajoDeCantidadMinima">
+                      <ion-icon name="alert-circle-outline"></ion-icon>
+                      Cantidad por debajo del mínimo requerido. Debe enviar solicitud por precio/estimación.
+                    </div>
                   </div>
 
                   <input inputmode="numeric" currencyMask formControlName="precioUsd"
                     [options]="{ prefix: '$ ', thousands: '.', decimal: ',', align: 'left', precision: 2}"
-                    (ngModelChange)="precioUsdChanged($event)" class="custom-input-measure" />
+                    (ngModelChange)="precioUsdChanged($event)"
+                    class="custom-input-measure" />
                 </div>
               </ion-item>
             </ion-col>
 
-            <ion-col size-lg="6" size-md="6" size-sm="6" size="12">
+            <ion-col size-lg="4" size-md="4" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Total US$</ion-label>
-                  <div style="height: 20px;"></div> <input currencyMask formControlName="totalUsd"
+                  <input currencyMask formControlName="totalUsd"
                     [options]="{ prefix: '$ ', thousands: '.', decimal: ',', align: 'left', precision: 2}" readonly
                     class="custom-input-measure read-only-input" />
                 </div>
               </ion-item>
             </ion-col>
-          </ion-row>
 
-          <div *ngIf="this.appProduct &&  this.subCategoryid=== 9">
-            <ion-card class="sub-section-card">
-              <ion-card-content>
-
-                <div class="sub-section-title">
-                  <ion-icon name="pricetag-outline"></ion-icon>
-                  Especificaciones Etiquetas Prime
-                </div>
-
-                <ion-row>
-                  <ion-col size="6">
-                    <div style="padding: 0 2px;">
-                      <ion-label position="stacked" class="bold measure-label">Salida</ion-label>
-                      <div class="custom-select-container">
-                        <ion-select formControlName="salida" (ionChange)="onChangeSalida($event)" interface="popover"
-                          class="custom-select" placeholder="Seleccione...">
-                          <ion-select-option *ngFor="let item of salidas" [value]="item">
-                            {{ item }}
-                          </ion-select-option>
-                        </ion-select>
-                      </div>
-                    </div>
-                  </ion-col>
-
-                  <ion-col size="6">
-                    <div style="padding: 0 2px;">
-                      <ion-label position="stacked" class="bold measure-label">Forma</ion-label>
-                      <div class="custom-select-container">
-                        <ion-select formControlName="forma" (ionChange)="onChangeTipoForma($event)" interface="popover"
-                          class="custom-select" placeholder="Seleccione...">
-                          <ion-select-option *ngFor="let item of tipoForma" [value]="item">
-                            {{ item }}
-                          </ion-select-option>
-                        </ion-select>
-                      </div>
-                    </div>
-                  </ion-col>
-                </ion-row>
-
-                <ion-row style="margin-top: 10px;">
-                  <ion-col size="12">
-                    <div style="padding: 0 2px;">
-                      <ion-label position="stacked" class="bold measure-label">Presentación</ion-label>
-                      <div class="textarea-container">
-                        <textarea formControlName="presentacion" rows="2" maxlength="200" class="custom-textarea"
-                          placeholder="Describa la presentación de las etiquetas...">
-                         </textarea>
-                      </div>
-                      <div class="contador-box">
-                        <span [style.color]="this.form.get('presentacion').value?.length < 5 ? 'red' : '#999'">
-                          {{ this.form.get('presentacion').value?.length < 5 ? 'Mínimo 5 dígitos: ' : '' }} {{
-                            this.form.get('presentacion').value?.length || 0 }}/200 </span>
-                      </div>
-                    </div>
-                  </ion-col>
-                </ion-row>
-
-              </ion-card-content>
-            </ion-card>
-          </div>
-
-
-
-          <!-- Dias -->
-          <ion-row>
-            <ion-col size="6">
+            <ion-col size-lg="3" size-md="3" size-sm="6" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Días de Entrega</ion-label>
@@ -776,6 +728,61 @@
               </ion-item>
             </ion-col>
           </ion-row>
+
+          <div *ngIf="this.appProduct &&  this.subCategoryid=== 9">
+            <div class="inline-section">
+              <div class="sub-section-title">
+                <ion-icon name="pricetag-outline"></ion-icon>
+                Especificaciones Etiquetas Prime
+              </div>
+
+              <ion-row class="compact-row">
+                <ion-col size-lg="3" size-md="3" size-sm="6" size="12">
+                  <div style="padding: 0 2px;">
+                    <ion-label position="stacked" class="bold measure-label">Salida</ion-label>
+                    <div class="custom-select-container">
+                      <ion-select formControlName="salida" interface="popover"
+                        class="custom-select" placeholder="Seleccione...">
+                        <ion-select-option *ngFor="let item of salidas" [value]="item">
+                          {{ item }}
+                        </ion-select-option>
+                      </ion-select>
+                    </div>
+                  </div>
+                </ion-col>
+
+                <ion-col size-lg="3" size-md="3" size-sm="6" size="12">
+                  <div style="padding: 0 2px;">
+                    <ion-label position="stacked" class="bold measure-label">Forma</ion-label>
+                    <div class="custom-select-container">
+                      <ion-select formControlName="forma" interface="popover"
+                        class="custom-select" placeholder="Seleccione...">
+                        <ion-select-option *ngFor="let item of tipoForma" [value]="item">
+                          {{ item }}
+                        </ion-select-option>
+                      </ion-select>
+                    </div>
+                  </div>
+                </ion-col>
+
+                <ion-col size-lg="6" size-md="6" size-sm="12" size="12">
+                  <div style="padding: 0 2px;">
+                    <ion-label position="stacked" class="bold measure-label">Presentación</ion-label>
+                    <div class="textarea-container">
+                      <textarea formControlName="presentacion" rows="2" maxlength="200" class="custom-textarea"
+                        placeholder="Describa la presentación de las etiquetas...">
+                       </textarea>
+                    </div>
+                    <div class="contador-box">
+                      <span [style.color]="this.form.get('presentacion').value?.length < 5 ? 'red' : '#999'">
+                        {{ this.form.get('presentacion').value?.length < 5 ? 'Mínimo 5 dígitos: ' : '' }} {{
+                          this.form.get('presentacion').value?.length || 0 }}/200 </span>
+                    </div>
+                  </div>
+                </ion-col>
+              </ion-row>
+            </div>
+          </div>
 
           <ion-row>
             <ion-col size-lg="6" size-md="6" size-sm="6" size="12">
@@ -801,13 +808,13 @@
 
 
 
-          <ion-row>
-            <ion-col size="12">
+          <ion-row class="compact-row">
+            <ion-col size-lg="6" size-md="6" size-sm="12" size="12">
               <ion-item lines="none" class="measure-item">
                 <div style="width: 100%;">
                   <ion-label position="stacked" class="bold measure-label">Observaciones de la Cotización</ion-label>
                   <div class="textarea-container">
-                    <textarea formControlName="observaciones" rows="3" maxlength="200" class="custom-textarea"
+                    <textarea formControlName="observaciones" rows="2" maxlength="200" class="custom-textarea"
                       placeholder="Detalles adicionales del pedido...">
                     </textarea>
                   </div>
@@ -838,6 +845,15 @@
             </div>
 
             <div class="status-banner status-approved"
+              *ngIf="item.statusAprobacionDto.valorVentaAprobarUsd > 0 && item.statusAprobacionDto.statusString !== 'APROBADO'">
+              <ion-icon name="checkmark-circle" class="status-icon"></ion-icon>
+              <div class="status-content">
+                <h3>Valor autorizado</h3>
+                <p><strong>${{ generalService.maskFloat(item.statusAprobacionDto.valorVentaAprobarUsd)
+                    }}</strong></p>
+              </div>
+            </div>
+            <div class="status-banner status-approved"
               *ngIf="item.statusAprobacionDto.valorVentaAprobarUsd > 0 && !solicitarPrecio && item.statusAprobacionDto.statusString === 'APROBADO'">
               <ion-icon name="checkmark-circle" class="status-icon"></ion-icon>
               <div class="status-content">
@@ -849,7 +865,7 @@
 
             <div *ngIf="newPrecioMasFlete < precioUsd && item.statusAprobacionDto.statusString === 'APROBADO'"
               style="padding: 10px;">
-              <ion-button expand="block" shape="round" color="danger" [disabled]="_btnCalculadoraDisabled"
+              <ion-button expand="block" shape="round" color="danger" [disabled]="btnCalculadoraDisabled"
                 (click)="enviarAprobacion()">
                 <ion-icon slot="start" name="paper-plane-outline"></ion-icon>
                 Re-Enviar para Aprobación
@@ -857,13 +873,72 @@
             </div>
           </div>
 
-          <ion-row *ngIf="solicitarPrecio">
+          <ion-row *ngIf="puedeEnviarAprobacionPorSobreprecio() && tieneSolicitudSobreprecio()">
+            <ion-col size="12">
+              <div class="status-banner" [ngClass]="getClaseBannerSolicitudSobreprecio()">
+                <ion-icon [name]="getIconoSolicitudSobreprecio()" class="status-icon"></ion-icon>
+                <div class="status-content">
+                  <h3>{{ getEstadoSolicitudSobreprecio() }}</h3>
+                  <p>
+                    El precio de venta
+                    <strong>${{ generalService.maskFloat(getPrecioVentaActual()) }}</strong>
+                    supera en
+                    <strong>{{ generalService.maskFloat(getPorcentajeSobreprecio()) }}%</strong>
+                    el precio base
+                    <strong>${{ generalService.maskFloat(getPrecioBaseSobreprecio()) }}</strong>.
+                  </p>
+                  <p *ngIf="getSolicitudAprobacionSobreprecio()?.observacionSolicitante">
+                    <small>Solicitante: {{ getSolicitudAprobacionSobreprecio()?.observacionSolicitante }}</small>
+                  </p>
+                  <p *ngIf="getSolicitudAprobacionSobreprecio()?.observacionAprobador">
+                    <small>Aprobador: {{ getSolicitudAprobacionSobreprecio()?.observacionAprobador }}</small>
+                  </p>
+                </div>
+              </div>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="puedeSolicitarAprobacionPorSobreprecio()">
+            <ion-col size="12">
+              <div class="status-banner status-pending">
+                <ion-icon name="alert-circle" class="status-icon"></ion-icon>
+                <div class="status-content">
+                  <h3>{{ solicitudSobreprecioRechazada() ? 'Reenviar sobreprecio' : 'Sobreprecio' }}</h3>
+                  <p>
+                    El precio de venta
+                    <strong>${{ generalService.maskFloat(getPrecioVentaActual()) }}</strong>
+                    supera en
+                    <strong>{{ generalService.maskFloat(getPorcentajeSobreprecio()) }}%</strong>
+                    el precio base
+                    <strong>${{ generalService.maskFloat(getPrecioBaseSobreprecio()) }}</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div style="padding: 0 5px;">
+                <ion-label position="stacked" class="bold measure-label">Observaciones para la solicitud</ion-label>
+                <div class="textarea-container">
+                  <textarea formControlName="obsSolicitudSobreprecio" rows="4" class="custom-textarea"
+                    placeholder="Explique por qué requiere aprobar este sobreprecio..."></textarea>
+                </div>
+
+                <ion-button expand="block" shape="round" color="danger" class="ion-margin-top"
+                  [disabled]="!puedeEnviarSolicitudSobreprecio()" (click)="enviarAprobacionPorSobreprecio()">
+                  <ion-icon slot="start" name="send-outline"></ion-icon>
+                  {{ solicitudSobreprecioRechazada() ? 'Re-Enviar Aprobación Por Sobreprecio' : 'Enviar Aprobación Por Sobreprecio' }}
+                </ion-button>
+              </div>
+            </ion-col>
+          </ion-row>
+
+          <ion-row *ngIf="solicitarPrecio && !puedeEnviarAprobacionPorSobreprecio()">
             <ion-col size="12">
               <div class="status-banner status-pending">
                 <ion-icon name="alert-circle" class="status-icon"></ion-icon>
                 <div class="status-content">
                   <h3>Acción Requerida</h3>
                   <p>El precio ingresado requiere validación del Dpto. de Precios.</p>
+                  <p>{{cotizacion.mensajeSolicitudEstimada}}</p>
                 </div>
               </div>
 
@@ -875,7 +950,7 @@
                 </div>
 
                 <ion-button expand="block" shape="round" color="danger" class="ion-margin-top"
-                  [disabled]="_btnCalculadoraDisabled" (click)="enviarAprobacion()">
+                  [disabled]="!puedeEnviarSolicitudPrecio()" (click)="enviarAprobacion()">
                   <ion-icon slot="start" name="send-outline"></ion-icon>
                   {{mensajeBotonSolicitarPrecio}}
                 </ion-button>
@@ -890,5 +965,84 @@
       </form>
     </ion-card>
 
+  </div>
+
+  <ion-card class="detalle-list-card">
+    <ion-card-header>
+      <ion-card-title>Productos de la Cotización</ion-card-title>
+      <ion-card-subtitle>{{ cotizacion?.cotizacion }}</ion-card-subtitle>
+    </ion-card-header>
+
+    <ion-card-content>
+      <div *ngIf="detalleItems.length === 0" class="detalle-empty">
+        No hay productos cargados en esta cotización.
+      </div>
+      <div *ngIf="detalleItems.length > 0" class="detalle-limit-note">
+        {{ detalleItems.length }} / {{ getMaximoItemsProducto() }} productos
+      </div>
+
+      <div class="detalle-table-wrapper" *ngIf="detalleItems.length > 0">
+        <table class="detalle-table">
+          <thead>
+            <tr>
+              <th>Imagen</th>
+              <th>Producto</th>
+              <th class="numeric">Cantidad</th>
+              <th class="numeric">Precio US$</th>
+              <th class="numeric">Total US$</th>
+              <th class="numeric">Precio Bs.</th>
+              <th class="numeric">Total Bs.</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let detalle of detalleItems"
+              [class.detalle-selected]="detalle.id === detalleSeleccionadoId"
+            >
+              <td>
+                <img
+                  class="detalle-product-image"
+                  [src]="detalle.appProductsGetDto?.link || generalService.noImageUrl()"
+                  [alt]="detalle.nombreComercialProducto"
+                />
+              </td>
+              <td>
+                <strong>{{ detalle.nombreComercialProducto }}</strong>
+                <span>{{ detalle.cotizacion }}</span>
+                <ion-chip
+                  class="detalle-status-chip"
+                  *ngIf="detalle.mostrarStatusAprobacionPrecio"
+                  [color]="detalle.statusAprobacionColor"
+                >
+                  <ion-label>{{ detalle.statusAprobacionDto.statusString }}</ion-label>
+                </ion-chip>
+                <ion-chip
+                  class="detalle-status-chip"
+                  *ngIf="detalle.puedeEnviarAprobacionPorSobreprecio"
+                  [color]="detalle.statusSobreprecioColor"
+                >
+                  <ion-label>{{ detalle.statusSobreprecioTexto || 'Sobreprecio' }}</ion-label>
+                </ion-chip>
+              </td>
+              <td class="numeric">{{ generalService.maskFloat(detalle.cantidadSolicitada) }}</td>
+              <td class="numeric">{{ generalService.maskFloat(detalle.precioUsd, 4) }}</td>
+              <td class="numeric">{{ generalService.maskFloat(detalle.totalUsd) }}</td>
+              <td class="numeric">{{ generalService.maskFloat(detalle.precio) }}</td>
+              <td class="numeric">{{ generalService.maskFloat(detalle.total) }}</td>
+              <td>
+                <ion-button fill="outline" size="small" (click)="cargarDetalleEnFormulario(detalle)">
+                  Editar
+                </ion-button>
+                <ion-button fill="clear" color="danger" size="small" (click)="eliminarDetalleDesdeLista(detalle)">
+                  Eliminar
+                </ion-button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ion-card-content>
+  </ion-card>
   </div>
 </ion-content>

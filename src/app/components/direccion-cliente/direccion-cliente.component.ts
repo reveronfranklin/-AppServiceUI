@@ -17,7 +17,7 @@ export class DireccionClienteComponent implements OnInit {
     
     this.cotizaService.direccionFacturarCliente$.subscribe(direccionFacturaResult =>{
 
-      if(direccionFacturaResult === ''){
+      if(!direccionFacturaResult || direccionFacturaResult === ''){
         
         this.direccionFacturaCliente = [];
 

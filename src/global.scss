@@ -36,6 +36,28 @@
   height: auto;
   contain: content;
 }
+
+.natural-characteristic-select .alert-wrapper {
+  max-width: min(760px, 92vw);
+  width: min(760px, 92vw);
+}
+
+.natural-characteristic-select .alert-radio-group,
+.natural-characteristic-select .alert-checkbox-group {
+  max-height: min(70vh, 560px);
+}
+
+.natural-characteristic-select .alert-radio-label,
+.natural-characteristic-select .alert-checkbox-label {
+  font-size: 15px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.natural-characteristic-select .alert-tappable.alert-radio,
+.natural-characteristic-select .alert-tappable.alert-checkbox {
+  min-height: 48px;
+}
 ion-modal.create-expense-template-modal {
   --height: 750px !important;
   --width: 750px !important;

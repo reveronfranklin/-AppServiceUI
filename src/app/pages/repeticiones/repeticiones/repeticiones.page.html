@@ -30,7 +30,7 @@
 
   <ion-content class="ion-margin">
 
-    <ion-card *ngIf="appOrdenProductoRepeticionSelected" (click)="presentActionSheet(cotizacion)" [class]="cotizacion.claseCss">
+    <ion-card *ngIf="appOrdenProductoRepeticionSelected" (click)="presentActionSheet(appOrdenProductoRepeticionSelected)" [class]="cotizacion.claseCss">
       <ion-card-header color="light">
          <ion-item color="light" lines="none">
            <p> Cotizacion: {{ cotizacion.cotizacion }} </p>
@@ -74,10 +74,10 @@
         </div>
     </ion-item>
 
-     <ion-item>
+    <ion-item>
       <ion-col>
         <ion-label>Producto:</ion-label>
-        <ion-select   (ionChange)="nombreProductoChanged($event)" >
+        <ion-select [(ngModel)]="producto" (ionChange)="nombreProductoChanged($event)" >
           <ion-select-option *ngFor="let item of productos" [value]="item">{{item.nombreProducto}} </ion-select-option>
         </ion-select>
 
@@ -85,66 +85,88 @@
 
   </ion-item>
 
-    <table>
+    <ion-item lines="none">
+      <ion-searchbar
+        [debounce]="300"
+        [value]="orden"
+        placeholder="Buscar por orden"
+        (ionInput)="ordenChanged($event)"
+        (ionChange)="ordenChanged($event)">
+      </ion-searchbar>
+      <ion-button
+        class="btn-limpiar-filtros"
+        fill="clear"
+        color="medium"
+        (click)="limpiarFiltros()">
+        <ion-icon name="close-circle-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-item>
 
-      <tr>
+    <ion-item lines="none">
+      <ion-label>Total resultados: {{ appOrdenProductoRepeticionGetDto?.length || 0 }}</ion-label>
+    </ion-item>
+
+    <div class="tabla-ordenes-wrapper">
+    <table class="tabla-ordenes">
+
+      <tr class="filtros-row">
         <th></th>
         <th>
 
         </th>
         <th>
 
-          <ion-select  (ionChange)="nombreFormaChanged($event)" >
+          <ion-select [(ngModel)]="nombreForma" (ionChange)="nombreFormaChanged($event)" >
           <ion-select-option *ngFor="let item of nombresForma" [value]="item">{{item.nombreForma}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select   (ionChange)="basicaChanged($event)" >
+          <ion-select [(ngModel)]="medidaBasica" (ionChange)="basicaChanged($event)" >
           <ion-select-option *ngFor="let item of medidasBasica" [value]="item">{{item.basicaHumano}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select (ionChange)="opuestaChanged($event)" >
+          <ion-select [(ngModel)]="medidaOpuesta" (ionChange)="opuestaChanged($event)" >
             <ion-select-option *ngFor="let item of medidasOpuesta" [value]="item">{{item.opuestaHumano}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select (ionChange)="partesChanged($event)" >
+          <ion-select [(ngModel)]="cantidadParte" (ionChange)="partesChanged($event)" >
             <ion-select-option *ngFor="let item of cantidadPartes" [value]="item">{{item.partes_formula}}</ion-select-option>
             </ion-select>
         </th>
         <th>
-          <ion-select  (ionChange)="tintasChanged($event)" >
+          <ion-select [(ngModel)]="cantidadTinta" (ionChange)="tintasChanged($event)" >
             <ion-select-option *ngFor="let item of cantidadTintas" [value]="item">{{item.cant_Tintas}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select  (ionChange)="papelesPrimeraParteChanged($event)" >
+          <ion-select [(ngModel)]="papelPrimeraParte" (ionChange)="papelesPrimeraParteChanged($event)" >
             <ion-select-option *ngFor="let item of papelesPrimeraParte" [value]="item">{{item.papelprimeraparte}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select  (ionChange)="papelesSegundaParteChanged($event)" >
+          <ion-select [(ngModel)]="papelSegundaParte" (ionChange)="papelesSegundaParteChanged($event)" >
             <ion-select-option *ngFor="let item of papelesSegundaParte" [value]="item">{{item.papelsegundaparte}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select *ngIf="papelesTerceraParte" (ionChange)="papelesTerceraParteChanged($event)" >
+          <ion-select *ngIf="papelesTerceraParte" [(ngModel)]="papelTerceraParte" (ionChange)="papelesTerceraParteChanged($event)" >
             <ion-select-option *ngFor="let item of papelesTerceraParte" [value]="item">{{item.papelterceraparte}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select *ngIf="papelesCuartaParte" (ionChange)="papelesCuartaParteChanged($event)" >
+          <ion-select *ngIf="papelesCuartaParte" [(ngModel)]="papelCuartaParte" (ionChange)="papelesCuartaParteChanged($event)" >
             <ion-select-option *ngFor="let item of papelesCuartaParte" [value]="item">{{item.papelcuartaparte}}</ion-select-option>
           </ion-select>
         </th>
         <th>
-          <ion-select *ngIf="papelesQuintaParte" (ionChange)="papelesQuintaParteChanged($event)" >
+          <ion-select *ngIf="papelesQuintaParte" [(ngModel)]="papelQuintaParte" (ionChange)="papelesQuintaParteChanged($event)" >
             <ion-select-option *ngFor="let item of papelesQuintaParte" [value]="item">{{item.papelquintaparte}}</ion-select-option>
           </ion-select>
         </th>
       </tr>
-      <tr>
+      <tr class="encabezado-row">
         <th>Orden</th>
         <th>Fecha</th>
         <th>Forma</th>
@@ -161,14 +183,14 @@
 
       </tr>
 
-    <tr  *ngFor="let item of appOrdenProductoRepeticionGetDto">
+    <tr class="dato-row" *ngFor="let item of appOrdenProductoRepeticionGetDto">
 
       <!-- <td (click)="presentActionSheet(item)">{{ item.fechaString | date }} </td> -->
         <div *ngIf="item.appproductsId===0">
-          <td bgcolor="#FB2576" (click)="setItem(item)">{{ item.orden }}</td>
+          <td bgcolor="#FB2576" class="orden-cell" [class.orden-coincidente]="esOrdenCoincidente(item)" (click)="setItem(item)">{{ item.orden }}</td>
         </div>
         <div *ngIf="item.appproductsId>0">
-          <td (click)="setItem(item)">{{ item.orden }}</td>
+          <td class="orden-cell" [class.orden-coincidente]="esOrdenCoincidente(item)" (click)="setItem(item)">{{ item.orden }}</td>
         </div>
 
         <td (click)="setItem(item)">{{ item.fechaString}} </td>
@@ -186,7 +208,5 @@
     </tr>
 
     </table>
+    </div>
   </ion-content>
-
-
-

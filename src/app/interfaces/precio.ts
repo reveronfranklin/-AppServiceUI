@@ -7,6 +7,11 @@ export interface PrecioDto {
 
   calculoId: number;
   flete: number;
+  fleteMaximo?: number;
   porcFlete: number;
+  precioPorRango?: number;
+  desde?: number;
+  hasta?: number;
   porDebajoDeCantidadMinima: boolean;
+  porcMaximoSobrePrecio: number;
 }

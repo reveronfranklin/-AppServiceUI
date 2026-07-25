@@ -1,31 +1,61 @@
-<ion-content>
-  <ion-grid>
+<ion-content class="search-page">
+  <ion-grid fixed>
     <ion-row>
-      <ion-col size-lg="4" size-md="4" size-sm="12" size="12" class="col-filtros">
-        <ion-item *ngFor="let variable of listaVariablesAgrupado">
-          <ion-label style="font-size: 14px;padding: 0px;"
-            [ngStyle]="variable.marcado === true ? marcado() : desmarcado()">
-            {{variable.variableDescription}}
-          </ion-label>
-          <ion-select placeholder="Select Variable" (ionChange)="onChangeVariableId($event)">
-            <ion-select-option *ngFor="let item of variable.appVariableSearchGetDto" [value]="item"
-              class="ion-text-wrap">
-              {{item.searchText}}
-            </ion-select-option>
-          </ion-select>
-        </ion-item>
+      <ion-col size="12" size-md="4" class="col-filtros">
+        <ion-card class="panel-card">
+          <ion-card-header>
+            <ion-card-title>Caracteristicas</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="variable-list">
+              <ion-item class="variable-row" lines="none" *ngFor="let variable of listaVariablesAgrupado">
+                <ion-label class="variable-label" [ngStyle]="variable.marcado === true ? marcado() : desmarcado()">
+                  {{ variable.variableDescription }}
+                </ion-label>
+                <ion-select placeholder="Seleccionar" (ionChange)="onChangeVariableId($event)">
+                  <ion-select-option
+                    *ngFor="let item of variable.appVariableSearchGetDto"
+                    [value]="item"
+                    class="ion-text-wrap"
+                  >
+                    {{ item.searchText }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </div>
+          </ion-card-content>
+        </ion-card>
       </ion-col>
 
-      <ion-col size-lg="8" size-md="8" size-sm="12" size="12">
-        <ion-list>
-          <ion-item *ngFor="let producto of listaProductos" (click)="onSelect(producto)">
-            <img src="{{producto.link}}">
-            <ion-item class="item item-text-wrap">
-              <p>{{ producto.description1 }} Precio: {{producto.unitPrice}} {{producto.productionUnitGetDto.code}} - {{
-                producto.code }}</p>
-            </ion-item>
-          </ion-item>
-        </ion-list>
+      <ion-col size="12" size-md="8">
+        <ion-card class="panel-card">
+          <ion-card-header>
+            <ion-card-title>Productos</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list class="products-list" *ngIf="listaProductos && listaProductos.length > 0; else emptyProducts">
+              <ion-item *ngFor="let producto of listaProductos" (click)="onSelect(producto)" button detail="false">
+                <ion-thumbnail slot="start">
+                  <img [src]="producto.link" alt="producto" />
+                </ion-thumbnail>
+                <ion-label>
+                  <h3>{{ producto.description1 }}</h3>
+                  <p>
+                    Precio: {{ producto.unitPrice }}
+                    {{ producto.productionUnitGetDto.code }} - {{ producto.code }}
+                  </p>
+                </ion-label>
+              </ion-item>
+            </ion-list>
+            <ng-template #emptyProducts>
+              <div class="empty-state">
+                <ion-icon name="search-outline"></ion-icon>
+                <h3>Sin resultados</h3>
+                <p>Selecciona caracteristicas para mostrar productos.</p>
+              </div>
+            </ng-template>
+          </ion-card-content>
+        </ion-card>
       </ion-col>
     </ion-row>
   </ion-grid>

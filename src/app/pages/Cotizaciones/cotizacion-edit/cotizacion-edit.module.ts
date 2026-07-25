@@ -10,6 +10,7 @@ import { CotizacionEditPage } from './cotizacion-edit.page';
 
 import { ReactiveFormsModule } from '@angular/forms';
 import { SharedModule } from '../../../shared/shared.module'
+import { ConsultaPorRifPageModule } from '../consulta-por-rif/consulta-por-rif.module';
 
 @NgModule({
   imports: [
@@ -18,7 +19,8 @@ import { SharedModule } from '../../../shared/shared.module'
     IonicModule,
     CotizacionEditPageRoutingModule,
     ReactiveFormsModule,
-    SharedModule
+    SharedModule,
+    ConsultaPorRifPageModule
   ],
   declarations: [CotizacionEditPage]
 })

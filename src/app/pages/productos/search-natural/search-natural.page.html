@@ -1,0 +1,267 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Consulta Natural de Precios</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="interpretarTexto()" [disabled]="showLoading || buscandoPrecio">
+        <ion-icon slot="icon-only" name="sparkles-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-row *ngIf="showLoading || buscandoPrecio" class="header-loading">
+    <ion-col class="ion-text-center">
+      {{ mensaje || 'Procesando consulta...' }}
+    </ion-col>
+  </ion-row>
+</ion-header>
+
+<ion-content class="natural-search-page">
+  <ion-grid fixed>
+    <ion-row>
+      <ion-col size="12" size-lg="7">
+        <ion-card class="query-card">
+          <ion-card-header>
+            <ion-card-title>Consulta</ion-card-title>
+            <ion-card-subtitle>
+              Escriba producto, caracteristicas, cantidad, medidas, municipio y condicion.
+            </ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-textarea
+              [(ngModel)]="textoNatural"
+              rows="5"
+              class="natural-input"
+              placeholder="Ej. Cotizar 5000 etiquetas digitales adhesivas mate full color de 5x7 cm para Caracas, pago anticipado, en UND">
+            </ion-textarea>
+
+            <ion-button
+              expand="block"
+              color="primary"
+              class="ion-margin-top"
+              [disabled]="showLoading || buscandoPrecio || !textoNatural"
+              (click)="interpretarTexto()">
+              <ion-icon slot="start" name="sparkles-outline"></ion-icon>
+              Interpretar y buscar
+            </ion-button>
+
+            <ion-note color="medium">
+              La seleccion final se resuelve contra catalogos reales. Si hay dudas, seleccione el candidato correcto.
+            </ion-note>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>Parametros resueltos</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <form [formGroup]="form">
+              <ion-grid class="ion-no-padding">
+                <ion-row>
+                  <ion-col size="12" size-md="6">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Municipio</ion-label>
+                      <ion-input formControlName="descripcionMunicipio" readonly></ion-input>
+                      <ion-button slot="end" fill="clear" (click)="abrirMunicipio()">
+                        <ion-icon name="search-outline"></ion-icon>
+                      </ion-button>
+                    </ion-item>
+                  </ion-col>
+                  <ion-col size="12" size-md="6">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Condicion de pago</ion-label>
+                      <ion-select formControlName="condicionPago" interface="popover">
+                        <ion-select-option *ngFor="let item of condiciones" [value]="item.codigo">
+                          {{ item.descripcion }}
+                        </ion-select-option>
+                      </ion-select>
+                    </ion-item>
+                  </ion-col>
+                  <ion-col size="12" size-md="6">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Categoria</ion-label>
+                      <ion-select
+                        formControlName="subCategoriaId"
+                        interface="popover"
+                        (ionChange)="onSubcategoriaManualChange($event)">
+                        <ion-select-option *ngFor="let item of subcategorias" [value]="item.id">
+                          {{ item.description }}
+                        </ion-select-option>
+                      </ion-select>
+                    </ion-item>
+                  </ion-col>
+                  <ion-col size="12" size-md="6">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Unidad</ion-label>
+                      <ion-input formControlName="unidad" readonly></ion-input>
+                    </ion-item>
+                  </ion-col>
+                </ion-row>
+
+                <ion-row>
+                  <ion-col size="12" size-md="4">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Cantidad solicitada</ion-label>
+                      <input
+                        inputmode="numeric"
+                        currencyMask
+                        formControlName="cantidadSolicitada"
+                        [options]="{ prefix: '', thousands: '.', decimal: ',', align: 'left', precision: 0 }"
+                        class="inputValue" />
+                    </ion-item>
+                  </ion-col>
+                  <ion-col size="12" size-md="4">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Basica</ion-label>
+                      <input
+                        inputmode="numeric"
+                        currencyMask
+                        formControlName="medidaBasica"
+                        [options]="{ prefix: '', thousands: '.', decimal: ',', align: 'left', precision: 2 }"
+                        class="inputValue" />
+                    </ion-item>
+                  </ion-col>
+                  <ion-col size="12" size-md="4">
+                    <ion-item lines="inset">
+                      <ion-label position="stacked">Opuesta</ion-label>
+                      <input
+                        inputmode="numeric"
+                        currencyMask
+                        formControlName="medidaOpuesta"
+                        [options]="{ prefix: '', thousands: '.', decimal: ',', align: 'left', precision: 2 }"
+                        class="inputValue" />
+                    </ion-item>
+                  </ion-col>
+                </ion-row>
+              </ion-grid>
+            </form>
+
+            <div class="status-message" *ngIf="mensaje && !showLoading && !buscandoPrecio">
+              {{ mensaje }}
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+
+      <ion-col size="12" size-lg="5">
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>Producto</ion-card-title>
+            <ion-card-subtitle *ngIf="appProduct">
+              {{ appProduct.code }}
+            </ion-card-subtitle>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="selected-product" *ngIf="appProduct">
+              <strong>{{ appProduct.description1 }}</strong>
+              <p>{{ appProduct.description2 }}</p>
+            </div>
+
+            <ion-list *ngIf="!appProduct && productosCandidatos.length > 0">
+              <ion-list-header>Candidatos</ion-list-header>
+              <ion-item
+                button
+                detail="false"
+                *ngFor="let producto of productosCandidatos"
+                (click)="seleccionarProducto(producto)">
+                <ion-label>
+                  <h3>{{ producto.description1 }}</h3>
+                  <p>{{ producto.code }}</p>
+                </ion-label>
+              </ion-item>
+            </ion-list>
+
+            <div class="empty-state" *ngIf="!appProduct && productosCandidatos.length === 0">
+              Sin producto seleccionado
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card>
+          <ion-card-header>
+            <ion-card-title>Caracteristicas de la categoria</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <ion-list class="characteristics-list" *ngIf="tieneCaracteristicasValidas()">
+              <ion-item *ngFor="let group of variableGroups" lines="none" [hidden]="getOpcionesVariable(group).length === 0">
+                <ion-label>{{ group.variableDescription }}</ion-label>
+                <ion-select
+                  interface="alert"
+                  [interfaceOptions]="characteristicSelectOptions"
+                  [value]="getVariableSeleccionada(group)"
+                  (ionChange)="onVariableManualChange(group, $event)">
+                  <ion-select-option
+                    *ngFor="let item of getOpcionesVariable(group)"
+                    [value]="item"
+                    class="ion-text-wrap">
+                    {{ item.searchText }}
+                  </ion-select-option>
+                </ion-select>
+              </ion-item>
+            </ion-list>
+
+            <div class="detected-summary" *ngIf="variablesSeleccionadas.length > 0">
+              <ion-chip *ngFor="let variable of variablesSeleccionadas" color="primary">
+                <ion-label>{{ variable.variableDescription }}: {{ variable.item.searchText }}</ion-label>
+              </ion-chip>
+            </div>
+
+            <div class="empty-state" *ngIf="!subCategoria">
+              Seleccione una categoria para cargar sus productos.
+            </div>
+
+            <div class="empty-state" *ngIf="subCategoria && !tieneCaracteristicasValidas()">
+              Esta categoria se consulta desde la lista general de productos.
+            </div>
+
+            <div class="empty-state" *ngIf="tieneCaracteristicasValidas() && variablesSeleccionadas.length === 0">
+              No se detectaron caracteristicas. Seleccione al menos una para filtrar productos.
+            </div>
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card class="result-card">
+          <ion-card-header>
+            <ion-card-title>Resultado</ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <div class="price-summary" *ngIf="precioMasFlete > 0">
+              <div>
+                <small>Min US$</small>
+                <strong>{{ generalService.maskFloat(precioMasFlete, 2) }}</strong>
+              </div>
+              <div>
+                <small>Max US$</small>
+                <strong>{{ generalService.maskFloat(precioMaximoMasFlete, 2) }}</strong>
+              </div>
+              <div>
+                <small>Total</small>
+                <strong>{{ generalService.maskFloat(form.get('total').value, 2) }}</strong>
+              </div>
+              <div>
+                <small>ID</small>
+                <strong>{{ calculoId }}</strong>
+              </div>
+            </div>
+            <div class="empty-state" *ngIf="precioMasFlete <= 0">
+              Sin precio calculado
+            </div>
+
+            <ion-button
+              expand="block"
+              fill="outline"
+              class="ion-margin-top"
+              [disabled]="buscandoPrecio || !appProduct"
+              (click)="recalcularResultado()">
+              <ion-icon slot="start" name="calculator-outline"></ion-icon>
+              Recalcular
+            </ion-button>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+</ion-content>

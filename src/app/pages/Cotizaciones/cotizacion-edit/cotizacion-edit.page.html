@@ -154,4 +154,20 @@
       </div>
     </form>
   </ion-card>
+
+  <ion-modal
+    class="consulta-rif-inline-modal"
+    [isOpen]="consultaRifModalOpen"
+    (didDismiss)="closeConsultaPorRifModal()"
+  >
+    <ng-template>
+      <app-consulta-por-rif
+        class="consulta-rif-modal-content"
+        *ngIf="consultaRifModalOpen"
+        [initialRif]="consultaRifModalValue"
+        [autoSearch]="true"
+        [modalMode]="true"
+      ></app-consulta-por-rif>
+    </ng-template>
+  </ion-modal>
 </ion-content>

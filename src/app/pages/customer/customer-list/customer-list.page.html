@@ -1,89 +1,126 @@
-<ion-header>
-  <ion-toolbar color='primary'>
-    <!-- Boton principal del menu -->
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
     <ion-buttons slot="start">
       <ion-menu-button></ion-menu-button>
     </ion-buttons>
-
-    <!-- Botonos auxiliares -->
+    <ion-title>Clientes {{ nombreUsuario }}</ion-title>
     <ion-buttons slot="end">
-
-      <!-- Refrescar lista  -->
       <ion-button (click)="refresh()">
-        <ion-icon name="refresh"></ion-icon>
+        <ion-icon slot="icon-only" name="refresh"></ion-icon>
       </ion-button>
-      <!-- añadir cotizacion -->
       <ion-button (click)="onClickAdd()">
-        <ion-icon name="add-outline"></ion-icon>
+        <ion-icon slot="icon-only" name="add-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
-
-
-    <ion-title>Clientes: {{ this.nombreUsuario}}</ion-title>
   </ion-toolbar>
 
+  <ion-grid class="ion-no-padding bg-white filter-bar">
+    <ion-row>
+      <ion-col size="12" size-md="4">
+        <ion-item lines="none">
+          <ion-label position="stacked">Ver</ion-label>
+          <ion-select [(ngModel)]="pageSize" (ionChange)="onPageSizeChange()" interface="popover">
+            <ion-select-option *ngFor="let n of listReg" [value]="n">{{ n }} por pág.</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
 
-  <br>
-  <ion-item>
-
-    <ion-searchbar [(ngModel)]="searchText" (ionChange)="onChangeSearchText($event)"
-      placeholder="IdCliente-Nombre Ciente-Rif" debounce=800></ion-searchbar>
-
-  </ion-item>
-
-  <ion-row>
-
-    <ion-col *ngIf="cargando">
-      <div class="ion-text-center">
-
-        <h3>Cargando datos.........</h3>
-
-      </div>
-    </ion-col>
-
-  </ion-row>
-
-
-
-
-
+  <ion-toolbar color="light">
+    <ion-searchbar
+      [value]="searchText"
+      (ionChange)="onChangeSearchText($event)"
+      debounce="800"
+      placeholder="ID, Nombre Cliente, RIF..."
+      animated="true"
+    >
+    </ion-searchbar>
+  </ion-toolbar>
 </ion-header>
 
 <ion-content>
-
-
-  <!-- listado de cotizaciones  -->
-  <ion-grid>
+  <ion-grid *ngIf="cargando">
     <ion-row>
-      <ion-col size-lg="3" size-md="3" size-sm="3" size="12" *ngFor="let item of mtrClienteDto">
-        <ion-card (click)="presentActionSheet(item)" [class]="item.claseCss">
-          <ion-card-header color="light">
-            <ion-item color="light" lines="none">
-              <p> <b> Cliente: </b> {{ item.codigo }} {{ item.nombreCliente}} </p>
-            </ion-item>
-
+      <ion-col size="12" size-md="6" size-lg="4" *ngFor="let s of skeletonCount">
+        <ion-card>
+          <ion-card-header>
+            <ion-skeleton-text animated style="width: 50%"></ion-skeleton-text>
+            <ion-card-title
+              ><ion-skeleton-text animated style="width: 70%"></ion-skeleton-text
+            ></ion-card-title>
           </ion-card-header>
-
-          <ion-card-content class="ion-margin-top">
-            <p> <b> Id: </b> {{item.id}} </p>
-            <p> <b> Sector: </b> {{item.descripcionSector}} </p>
-            <p> <b> Ramo: </b> {{item.descripcionRamo}} </p>
-            <p> <b> Estatus: </b> {{item.status}} </p>
-            <p> <b> Direccion: </b> {{item.direccion}} </p>
-            <p> {{item.direccion1}} </p>
-            <p> <b> Rif Cli: </b> {{ item.rifCliente }} </p>
-            <p> <b> Rif Dir: </b> {{ item.rifDireccion }} </p>
-            <p> <b> Vendedor: </b> {{ item.nombreVendedor }} </p>
-            <p> <b>Oficina: </b> {{ item.nombreOficina}} </p>
-
+          <ion-card-content>
+            <p><ion-skeleton-text animated style="width: 80%"></ion-skeleton-text></p>
+            <p><ion-skeleton-text animated style="width: 65%"></ion-skeleton-text></p>
+            <p><ion-skeleton-text animated style="width: 45%"></ion-skeleton-text></p>
           </ion-card-content>
         </ion-card>
       </ion-col>
     </ion-row>
   </ion-grid>
-  <ion-grid>
 
+  <div *ngIf="!cargando && mtrClienteDto.length === 0" class="ion-text-center ion-padding">
+    <ion-icon name="search-outline" style="font-size: 3rem; color: #ccc"></ion-icon>
+    <p>{{ mensaje || 'No se encontraron clientes' }}</p>
+  </div>
+
+  <ion-grid *ngIf="!cargando && mtrClienteDto.length > 0">
+    <ion-row>
+      <ion-col size="12" size-md="6" size-lg="4" *ngFor="let item of mtrClienteDto">
+        <ion-card (click)="!isProspecto(item) && presentActionSheet(item)" [class]="item.claseCss">
+          <ion-card-header>
+            <ion-item lines="none" class="ion-no-padding" color="transparent">
+              <ion-card-subtitle>Cliente: {{ item.codigo }}</ion-card-subtitle>
+              <ion-buttons slot="end">
+                <ion-button
+                  class="contacts-btn"
+                  fill="clear"
+                  size="small"
+                  color="primary"
+                  title="Mantenimiento de contactos"
+                  aria-label="Mantenimiento de contactos"
+                  (click)="onMantenimientoContactos(item, $event)"
+                >
+                  <ion-icon name="person-add-outline"></ion-icon>
+                </ion-button>
+              </ion-buttons>
+            </ion-item>
+            <ion-card-title>{{ item.nombreCliente }}</ion-card-title>
+          </ion-card-header>
+
+          <ion-card-content>
+            <p><b>ID:</b> {{ item.id }}</p>
+            <p><b>Sector:</b> {{ item.descripcionSector }}</p>
+            <p><b>Ramo:</b> {{ item.descripcionRamo }}</p>
+            <p><b>Estatus:</b> {{ item.status }}</p>
+            <p><b>Dirección:</b> {{ item.direccion }}</p>
+            <p *ngIf="item.direccion1">{{ item.direccion1 }}</p>
+            <p><b>RIF Cli:</b> {{ item.rifCliente }}</p>
+            <p><b>RIF Dir:</b> {{ item.rifDireccion }}</p>
+            <p><b>Vendedor:</b> {{ item.nombreVendedor }}</p>
+            <p><b>Oficina:</b> {{ item.nombreOficina }}</p>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
   </ion-grid>
-
-
 </ion-content>
+
+<ion-footer>
+  <ion-toolbar color="light">
+    <ion-row class="ion-justify-content-center ion-align-items-center">
+      <ion-button fill="clear" (click)="previousPage()" [disabled]="currentPage === 1 || cargando">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+      <ion-text><strong>{{ currentPage }}</strong> / {{ totalPages }}</ion-text>
+      <ion-button
+        fill="clear"
+        (click)="nextPage()"
+        [disabled]="currentPage === totalPages || totalPages === 0 || cargando"
+      >
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </ion-button>
+    </ion-row>
+  </ion-toolbar>
+</ion-footer>

@@ -8,6 +8,8 @@ export class AppPriceDto {
     precio: number;
 
     precioMaximo: number;
+
+    porcMaximoSobrePrecio: number;
 }
 
 export class AppPriceGetDto {
@@ -18,6 +20,7 @@ export class AppPriceGetDto {
     hasta: number;
     precio: number;
     precioMaximo: number;
+    porcMaximoSobrePrecio: number;
 
 }
 export class AppPriceCreateDto {

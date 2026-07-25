@@ -1,35 +1,20 @@
 /* eslint-disable quote-props */
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import {
   ActionSheetController,
-  NavController,
-  AlertController,
   ModalController,
 } from '@ionic/angular';
-
-import { CotizacionesListService } from '../../../services/cotizaciones/cotizaciones-list.service';
-// import { cotizacionesListDto } from '../../../models/cotizaciones-list-dto';
 import { Router } from '@angular/router';
-import { AppGeneralQuotesQueryFilter } from 'src/app/interfaces/App-General-Quotes-Query-Filter';
-import { AppGeneralQuotesGetDto } from 'src/app/models/app-general-quotes-get-dto';
-import { CondicionPagoQueryFilter } from 'src/app/interfaces/condicion-pago-query-filter';
 import { IUsuario } from 'src/app/interfaces/iusuario';
 import { GeneralService } from 'src/app/services/general.service';
 
-import { Observable } from 'rxjs';
-import { AppStatusQuoteGetDto } from 'src/app/models/app-status-quote-get-dto';
-import { AppGeneralQuotesChangeStatusDto } from 'src/app/models/app-general-quotes-change-status-dto';
-import { AppGeneralQuotesActionSheetDto } from 'src/app/models/app-general-quotes-action-sheet-dto';
-import { TasaPreferencialQueryFilter } from '../../../interfaces/tasa-preferencial-query-filter';
-import { TasaPreferencialService } from '../../../services/tasa-preferencial.service';
-import { TPaTasaReferencialGetDto } from '../../../models/t-pa-tasa-referencial-get-dto';
-import { AppGeneralQuotesCopyDto } from '../../../models/app-general-quotes-ccopy-dto';
 import { ClienteService } from 'src/app/services/cliente.service';
-import { MtrClienteDto } from 'src/app/models/mtr-cliente-dto';
-import { MtrClienteQueryFilter } from 'src/app/interfaces/mtr-cliente-query-filter';
 import { MtrClienteDireccionDto } from 'src/app/models/mtr-direcciones-clientes-dto';
 import { CustomerEditPage } from '../customer-edit/customer-edit.page';
 import { CustomerCreatePage } from '../customer-create/customer-create.page';
+import { ContactosListPage } from '../../contactos/contactos-list/contactos-list.page';
+import { ClienteRif } from 'src/app/models/cliente-rif';
+
 @Component({
   selector: 'app-customer-list',
   templateUrl: './customer-list.page.html',
@@ -37,115 +22,98 @@ import { CustomerCreatePage } from '../customer-create/customer-create.page';
 })
 export class CustomerListPage implements OnInit {
   mtrClienteDto: MtrClienteDireccionDto[] = [];
-  mtrClienteQueryFilter: MtrClienteQueryFilter;
-  pageSize = 20;
-  page = 0;
-  codigoSeleccionado: string;
+  searchText: string = '';
+  listReg: number[] = [5, 10, 20, 50, 100];
 
-  //observable
-  //cotizacion$: Observable<AppGeneralQuotesGetDto>;
-  cotizacion$: Observable<any>;
-  fechaDesde: string;
-  fechaHasta: string;
-  appGeneralQuotesCopyDto: AppGeneralQuotesCopyDto;
+  // Paginación
+  currentPage: number = 1;
+  pageSize: number = 5;
+  totalRecords: number = 0;
+  totalPages: number = 0;
 
-  tasaPreferencialQueryFilter: TasaPreferencialQueryFilter;
-  tPaTasaReferencialGetDto: TPaTasaReferencialGetDto;
-
-  appGeneralQuotesQueryFilter: AppGeneralQuotesQueryFilter;
-  appGeneralQuotesGetDtoArray: AppGeneralQuotesGetDto[] = [];
-  condicionPagoQueryFilter: CondicionPagoQueryFilter;
-  appStatusQuoteGetDto: AppStatusQuoteGetDto;
-  appGeneralQuotesChangeStatusDto: AppGeneralQuotesChangeStatusDto =
-    new AppGeneralQuotesChangeStatusDto();
-  appGeneralQuotesActionSheetDto: AppGeneralQuotesActionSheetDto;
-  cotizacion: AppGeneralQuotesGetDto;
-
-  searchText: string;
+  cargando: boolean = false;
+  mensaje: string = '';
+  nombreUsuario: string = '';
   usuario: IUsuario;
-  nombreUsuario: string;
-  botones = [];
-  listReg: number[] = [5, 10, 15, 20, 25, 30];
-  public cargando: boolean;
+  skeletonCount = [1, 2, 3, 4, 5, 6];
 
   constructor(
     private router: Router,
     private actionSheetCtrl: ActionSheetController,
-    private navctrl: NavController,
     private gs: GeneralService,
-    private tasaPreferencialService: TasaPreferencialService,
-    public alertController: AlertController,
     private clienteService: ClienteService,
-    private modalCtrl: ModalController
+    private modalCtrl: ModalController,
   ) {}
 
   ngOnInit() {
-    const currentDate = new Date();
-
-    // add a day
-    currentDate.setDate(currentDate.getDate() - 30);
-    this.fechaDesde = currentDate.toISOString();
-    this.fechaHasta = new Date().toISOString();
-    this.cargando = false;
-  }
-
-  optionsReg($event) {
-    this.pageSize = $event.target.value;
-    this.refresh();
-  }
-
-  ionViewDidEnter() {
-    this.cargando = true;
-
-    const filtro = '';
-
     this.usuario = this.gs.GetUsuario();
-
-    this.nombreUsuario = '';
     if (
-      this.usuario !== null &&
-      this.usuario.nombreUsuario !== null &&
+      this.usuario &&
+      this.usuario.nombreUsuario &&
       this.usuario.nombreUsuario !== 'undefined'
     ) {
       this.nombreUsuario =
         '(' + this.usuario.user + '-' + this.usuario.nombreUsuario + ')';
     }
+  }
+
+  ionViewDidEnter() {
+    this.loadCustomers(this.searchText);
+  }
+
+  private loadCustomers(searchTextBusqueda?: string) {
+    if (!this.usuario) {
+      this.usuario = this.gs.GetUsuario();
+    }
+    if (!this.usuario) {
+      this.gs.presentToast('No se encontró usuario conectado', 'warning');
+      return;
+    }
+
+    this.cargando = true;
+    this.mensaje = '';
+    const filtro = searchTextBusqueda ?? this.searchText ?? '';
+    this.searchText = filtro;
+
     const filter = {
       usuario: this.usuario.user,
-      pageNumber: 1,
-      pageSize: 20,
+      pageNumber: this.currentPage,
+      pageSize: this.pageSize,
       searchText: filtro,
     };
-    console.log('filter cliente', filter);
-    this.clienteService.listDireccionesClientes(filter).subscribe((resp) => {
-      this.mtrClienteDto = resp.data;
-      this.cargando = false;
-      console.log('Clientes>>>>>>>>', this.mtrClienteDto);
+
+    this.clienteService.listDireccionesClientes(filter).subscribe({
+      next: (resp) => {
+        this.mtrClienteDto = [...(resp?.data ?? [])].sort((left, right) => {
+          const leftIsProspecto = left?.codigo?.trim() === '000000';
+          const rightIsProspecto = right?.codigo?.trim() === '000000';
+          return Number(rightIsProspecto) - Number(leftIsProspecto);
+        });
+        this.totalRecords = resp?.meta?.totalCount ?? this.mtrClienteDto.length;
+        this.totalPages =
+          this.totalRecords > 0
+            ? Math.ceil(this.totalRecords / this.pageSize)
+            : 0;
+        this.mensaje = resp?.meta?.message ?? '';
+        this.cargando = false;
+      },
+      error: (err) => {
+        console.error(err);
+        this.cargando = false;
+        this.gs.presentToast('Error al conectar con el servidor', 'danger');
+      },
     });
   }
 
-  refresh(filtro: any = '?') {
+  refresh() {
+    this.currentPage = 1;
     this.mtrClienteDto = [];
-    this.cargando = true;
+    this.loadCustomers();
+  }
 
-    if (filtro === '?') {
-      filtro = this.searchText;
-    }
-
-    this.usuario = this.gs.GetUsuario();
-
-    const filter = {
-      usuario: this.usuario.user,
-      pageNumber: 1,
-      pageSize: 20,
-      searchText: filtro,
-    };
-    console.log('filter cliente', filter);
-    this.clienteService.listDireccionesClientes(filter).subscribe((resp) => {
-      this.mtrClienteDto = resp.data;
-      this.cargando = false;
-      console.log(this.mtrClienteDto);
-    });
+  onPageSizeChange() {
+    this.currentPage = 1;
+    this.loadCustomers();
   }
 
   onClickAdd() {
@@ -168,6 +136,10 @@ export class CustomerListPage implements OnInit {
     this.router.navigate(['/menu/cotizacion-edit'], {
       state: { itemCliente: item },
     });
+  }
+
+  isProspecto(item: MtrClienteDireccionDto): boolean {
+    return item?.codigo?.trim() === '000000';
   }
 
   async crearCliente(item) {
@@ -201,11 +173,71 @@ export class CustomerListPage implements OnInit {
     this.refresh();
   }
 
-  onChangeSearchText(event) {
-    this.refresh(event.target.value);
+  async onMantenimientoContactos(item: MtrClienteDireccionDto, event?: Event) {
+    event?.stopPropagation();
+
+    const cliente = item?.codigo;
+    const rif = item?.rifCliente;
+
+    if (!cliente || (!rif && cliente.trim() !== '000000')) {
+      this.gs.presentToast(
+        'No se puede abrir contactos: cliente o RIF no disponible',
+        'warning',
+      );
+      return;
+    }
+
+    const clienteRif: ClienteRif = {
+      cliente: cliente,
+      rif: rif ?? '',
+    };
+
+    const modal = await this.modalCtrl.create({
+      component: ContactosListPage,
+      componentProps: {
+        clienteRif: clienteRif,
+      },
+    });
+
+    await modal.present();
+    await modal.onDidDismiss();
+  }
+
+  onChangeSearchText(event: any) {
+    const val =
+      event.detail?.value !== undefined
+        ? event.detail.value
+        : event.target?.value;
+
+    this.searchText = val ?? '';
+    this.currentPage = 1;
+    this.mtrClienteDto = [];
+    this.loadCustomers(this.searchText);
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage++;
+      this.loadCustomers();
+    }
+  }
+
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.loadCustomers();
+    }
+  }
+
+  goToPage(p: number) {
+    this.currentPage = p;
+    this.loadCustomers();
   }
 
   public async presentActionSheet(item: MtrClienteDireccionDto) {
+    if (this.isProspecto(item)) {
+      return;
+    }
     const opcionesMenu = [];
 
     const dict = {

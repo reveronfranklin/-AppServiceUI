@@ -15,6 +15,15 @@ import { filter } from 'rxjs/operators';
 import { AppGeneralQuotesDeleteDto } from 'src/app/models/app-general-quotes-delete-dto';
 import { UpperCasePipe } from '@angular/common';
 import { th } from 'date-fns/locale';
+import { AppStatusQuoteGetDto } from '../../../models/app-status-quote-get-dto';
+
+interface CotizacionesListFilters {
+  fechaDesde: string;
+  fechaHasta: string;
+  searchText: string;
+  statusId: number;
+  pageSize: number;
+}
 
 @Component({
   selector: 'app-cotizaciones-list',
@@ -22,6 +31,8 @@ import { th } from 'date-fns/locale';
   styleUrls: ['./cotizaciones-list.page.scss'],
 })
 export class CotizacionesListPage implements OnInit, OnDestroy {
+  private readonly storageKey = 'cotizacionesListFilters';
+
   appGeneralQuotesGetDtoArray: any[] = [];
   fechaDesde: string;
   fechaHasta: string;
@@ -59,17 +70,14 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    const currentDate = new Date();
-    currentDate.setDate(currentDate.getDate() - 30);
-    this.fechaDesde = currentDate.toISOString();
-    this.fechaHasta = new Date().toISOString();
+    this.setDefaultFilters();
+    this.loadSavedFilters();
 
     this.usuario = this.gs.GetUsuario();
     if (this.usuario) {
       this.nombreUsuario = `(${this.usuario.user})`;
     }
-    // Recuperamos el filtro guardado en el servicio
-    this.searchText = this.cotizacionesService.filterSearchText;
+    this.cotizacionesService.filterSearchText = this.searchText;
 
     if (this.cargando) return;
     this.loadQuotes(this.searchText);
@@ -86,13 +94,14 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
 
     this.cargando = true;
     this.mensaje = '';
+    const searchText = searhTextBusqueda ?? this.searchText;
 
     const filter: AppGeneralQuotesQueryFilter = {
       pageSize: this.pageSize,
       pageNumber: this.currentPage,
       usuarioConectado: this.usuario.user,
       cotizacion: '',
-      searchText: searhTextBusqueda,
+      searchText,
       fechaDesde: this.fechaDesde,
       fechaHasta: this.fechaHasta,
       statusId: this.statusId,
@@ -115,6 +124,64 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
   }
 
   // --- Manejo de Eventos ---
+  private setDefaultFilters() {
+    const currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() - 30);
+    this.fechaDesde = currentDate.toISOString();
+    this.fechaHasta = new Date().toISOString();
+    this.searchText = '';
+    this.statusId = 0;
+    this.pageSize = 5;
+  }
+
+  private loadSavedFilters() {
+    const rawFilters = localStorage.getItem(this.storageKey);
+    if (!rawFilters) return;
+
+    try {
+      const filters = JSON.parse(rawFilters) as Partial<CotizacionesListFilters>;
+      this.fechaDesde = filters.fechaDesde ?? this.fechaDesde;
+      this.fechaHasta = this.getFechaHastaVigente(
+        filters.fechaHasta ?? this.fechaHasta,
+      );
+      this.searchText = filters.searchText ?? '';
+      this.statusId = filters.statusId ?? 0;
+      this.pageSize = filters.pageSize ?? 5;
+      this.saveFilters();
+    } catch {
+      localStorage.removeItem(this.storageKey);
+    }
+  }
+
+  private getFechaHastaVigente(fechaHasta: string): string {
+    const fechaGuardada = new Date(fechaHasta);
+
+    if (Number.isNaN(fechaGuardada.getTime())) {
+      return new Date().toISOString();
+    }
+
+    const hoy = new Date();
+    const inicioHoy = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth(),
+      hoy.getDate(),
+    );
+
+    return fechaGuardada < inicioHoy ? hoy.toISOString() : fechaHasta;
+  }
+
+  private saveFilters() {
+    const filters: CotizacionesListFilters = {
+      fechaDesde: this.fechaDesde,
+      fechaHasta: this.fechaHasta,
+      searchText: this.searchText,
+      statusId: this.statusId,
+      pageSize: this.pageSize,
+    };
+
+    localStorage.setItem(this.storageKey, JSON.stringify(filters));
+  }
+
   refresh() {
     this.currentPage = 1;
     this.appGeneralQuotesGetDtoArray = [];
@@ -123,11 +190,25 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
 
   onPageSizeChange() {
     this.currentPage = 1;
-    this.loadQuotes();
+    this.saveFilters();
+    this.loadQuotes(this.searchText);
   }
 
   optionsStatus($event: any) {
-    this.statusId = $event.target.value.id;
+    this.statusId = $event.detail?.value ?? $event.target?.value ?? 0;
+    this.saveFilters();
+    this.refresh();
+  }
+
+  onFechaDesdeChange($event: any) {
+    this.fechaDesde = $event.detail?.value ?? this.fechaDesde;
+    this.saveFilters();
+    this.refresh();
+  }
+
+  onFechaHastaChange($event: any) {
+    this.fechaHasta = $event.detail?.value ?? this.fechaHasta;
+    this.saveFilters();
     this.refresh();
   }
 
@@ -141,9 +222,10 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
     console.log('Valor capturado:', val); // Ahora debería mostrar el texto
 
     // Actualizamos la variable local para que el filtro sea consistente
-    this.searchText = val;
+    this.searchText = val ?? '';
     // GUARDAMOS en el servicio para que no se pierda al navegar
-    this.cotizacionesService.filterSearchText = val;
+    this.cotizacionesService.filterSearchText = this.searchText;
+    this.saveFilters();
 
     // 2. Limpiar la lista para feedback visual inmediato (Skeleton)
     this.appGeneralQuotesGetDtoArray = [];
@@ -155,7 +237,7 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
     this.currentPage = 1;
 
     // 5. Llamar al servicio
-    this.loadQuotes(val);
+    this.loadQuotes(this.searchText);
   }
 
   // --- Paginación ---
@@ -203,13 +285,23 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
   async presentActionSheet(item: any) {
     const actionSheetDto = item.appGeneralQuotesActionSheetDto;
     const opcionesMenu = [];
-
+    var tituloRetornarEliminarSolicitudPrecio = 'Retornar Grabación';
+    console.log(item);
+    if (item.appStatusQuoteGetDto.enGrabacion) {
+      tituloRetornarEliminarSolicitudPrecio = 'Eliminar Solicitud de Precio';
+    }
     const acciones = [
       {
         text: 'Actualizar o Ver',
         icon: 'create-outline',
         show: true,
         handler: () => this.actualizarCotizacion(item),
+      },
+      {
+        text: 'Productos',
+        icon: 'list-outline',
+        show: true,
+        handler: () => this.mantenerDetalleCotizacion(item),
       },
       {
         text: 'Enviar al Cliente',
@@ -229,6 +321,13 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
         show: actionSheetDto.retornarAGrabacion,
         handler: () => this.presentAlertRetornarAGrabacion(item),
       },
+      {
+        text: 'Eliminar Solicitud de Precio',
+        icon: 'refresh-outline',
+        show: actionSheetDto.eliminarSolicitudPrecio,
+        handler: () => this.presentAlertEliminarSolicitudPrecio(item),
+      },
+
       {
         text: 'Postergar',
         icon: 'calendar-clear-outline',
@@ -289,6 +388,20 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
     this.cotizacionesService.cotizacion$.next(cotizacion);
     this.router.navigate(['/menu/cotizacion-edit'], {
       state: { flag: true, itemCliente: cotizacion.mtrClienteDto },
+    });
+  }
+
+  mantenerDetalleCotizacion(cotizacion: any) {
+    const detalles = cotizacion.appDetailQuotesGetDto || [];
+    const item = detalles[0];
+
+    this.cotizacionesService.cotizacion$.next(cotizacion);
+    this.router.navigate(['/edit-detalle-cotizacion'], {
+      state: {
+        cotizacion,
+        item,
+        operacion: item ? 1 : 0,
+      },
     });
   }
 
@@ -381,6 +494,30 @@ export class CotizacionesListPage implements OnInit, OnDestroy {
               id: cotizacion.id,
               usuarioActualiza: this.usuario.user,
             };
+            this.cotizacionesService.RetornarAGrabacion(dto).subscribe(() => {
+              this.cargando = false;
+              this.refresh();
+            });
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+  async presentAlertEliminarSolicitudPrecio(cotizacion: any) {
+    const alert = await this.alertController.create({
+      message: '¿Desea Eliminar Solicitud de Precio de esta Cotización?',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Confirmar',
+          handler: () => {
+            this.cargando = true;
+            const dto: AppGeneralQuotesCopyDto = {
+              id: cotizacion.id,
+              usuarioActualiza: this.usuario.user,
+            };
+            console.log('dto retornar a grabación', dto);
             this.cotizacionesService.RetornarAGrabacion(dto).subscribe(() => {
               this.cargando = false;
               this.refresh();

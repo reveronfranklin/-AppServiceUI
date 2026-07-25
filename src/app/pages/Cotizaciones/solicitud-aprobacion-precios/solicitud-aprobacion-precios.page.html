@@ -1,0 +1,376 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Aprobación de Precios {{ nombreUsuario }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="exportarExcel()" [disabled]="cargando || solicitudes.length === 0">
+        <ion-icon slot="icon-only" name="download-outline"></ion-icon>
+      </ion-button>
+      <ion-button (click)="refresh()" [disabled]="cargando">
+        <ion-icon slot="icon-only" name="refresh"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+
+  <ion-toolbar color="light">
+    <ion-segment [value]="segmento" (ionChange)="onSegmentChange($event)">
+      <ion-segment-button value="pendientes">
+        <ion-label>Pendientes</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="todas">
+        <ion-label>Todas</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+
+  <ion-toolbar color="light" *ngIf="segmento === 'pendientes' && ultimaActualizacionPendientes">
+    <ion-text class="auto-refresh-status">
+      <span>Actualizado {{ ultimaActualizacionPendientes }}</span>
+      <strong>{{ getPendientesCountText() }}</strong>
+    </ion-text>
+  </ion-toolbar>
+
+  <ion-toolbar color="light" *ngIf="segmento === 'pendientes'">
+    <ion-searchbar
+      [value]="searchTextPendientes"
+      (ionChange)="onPendientesSearchChange($event)"
+      debounce="250"
+      placeholder="Filtrar pendientes..."
+      animated="true">
+    </ion-searchbar>
+  </ion-toolbar>
+
+  <ion-toolbar color="light" *ngIf="segmento === 'pendientes' && pendientesCargadas.length > 0">
+    <div class="batch-actions">
+      <div class="batch-actions__selection">
+        <ion-button
+          size="small"
+          fill="clear"
+          (click)="toggleVisibleSelection()"
+          [disabled]="procesandoLote || solicitudes.length === 0">
+          {{ getSelectVisibleLabel() }}
+        </ion-button>
+        <ion-button
+          size="small"
+          fill="clear"
+          color="medium"
+          (click)="clearSelection()"
+          [disabled]="procesandoLote || getSelectedCount() === 0">
+          Limpiar
+        </ion-button>
+        <ion-text color="medium">{{ getSelectedCountText() }}</ion-text>
+      </div>
+      <div class="batch-actions__commands">
+        <ion-button
+          size="small"
+          color="success"
+          (click)="confirmarAprobarLote()"
+          [disabled]="!canProcessBatch()">
+          <ion-icon slot="start" name="checkmark-done-outline"></ion-icon>
+          Aprobar lote
+        </ion-button>
+        <ion-button
+          size="small"
+          color="danger"
+          (click)="confirmarRechazarLote()"
+          [disabled]="!canProcessBatch()">
+          <ion-icon slot="start" name="close-circle-outline"></ion-icon>
+          Rechazar lote
+        </ion-button>
+      </div>
+    </div>
+  </ion-toolbar>
+
+  <ion-grid class="ion-no-padding bg-white filter-bar" *ngIf="segmento === 'todas'">
+    <ion-row>
+      <ion-col size="6" size-md="4">
+        <ion-item lines="none">
+          <ion-label position="stacked">Desde</ion-label>
+          <ion-datetime-button datetime="fechaDesdeSolicitud"></ion-datetime-button>
+        </ion-item>
+      </ion-col>
+      <ion-col size="6" size-md="4">
+        <ion-item lines="none">
+          <ion-label position="stacked">Hasta</ion-label>
+          <ion-datetime-button datetime="fechaHastaSolicitud"></ion-datetime-button>
+        </ion-item>
+      </ion-col>
+      <ion-col size="12" size-md="4">
+        <ion-item lines="none">
+          <ion-label position="stacked">Ver</ion-label>
+          <ion-select [(ngModel)]="pageSize" (ionChange)="onPageSizeChange()" interface="popover">
+            <ion-select-option *ngFor="let n of listReg" [value]="n">{{ n }} por pág.</ion-select-option>
+          </ion-select>
+        </ion-item>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <ion-toolbar color="light" *ngIf="segmento === 'todas'">
+    <ion-searchbar
+      [value]="searchText"
+      (ionChange)="onSearchChange($event)"
+      debounce="700"
+      placeholder="Cotización, producto, cliente, vendedor..."
+      animated="true">
+    </ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-grid *ngIf="cargando">
+    <ion-row>
+      <ion-col size="12" size-md="6" size-lg="4" *ngFor="let s of skeletonCount">
+        <ion-card>
+          <ion-card-header>
+            <ion-skeleton-text animated style="width: 35%"></ion-skeleton-text>
+            <ion-card-title>
+              <ion-skeleton-text animated style="width: 80%"></ion-skeleton-text>
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content>
+            <p><ion-skeleton-text animated style="width: 70%"></ion-skeleton-text></p>
+            <p><ion-skeleton-text animated style="width: 55%"></ion-skeleton-text></p>
+            <p><ion-skeleton-text animated style="width: 45%"></ion-skeleton-text></p>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <div *ngIf="!cargando && solicitudes.length === 0" class="empty-state ion-text-center ion-padding">
+    <ion-icon name="search-outline"></ion-icon>
+    <p>{{ mensaje || 'No se encontraron solicitudes de aprobación de precios' }}</p>
+  </div>
+
+  <ion-grid *ngIf="!cargando && solicitudes.length > 0">
+    <ion-row>
+      <ion-col size="12" size-md="6" size-lg="4" *ngFor="let solicitud of solicitudes">
+        <ion-card class="solicitud-card">
+          <ion-item
+            *ngIf="segmento === 'pendientes' && isPendiente(solicitud)"
+            lines="full"
+            class="selection-row">
+            <ion-checkbox
+              slot="start"
+              [checked]="isSolicitudSelected(solicitud)"
+              [disabled]="procesandoLote"
+              (ionChange)="toggleSolicitudSelection(solicitud, $event)">
+            </ion-checkbox>
+            <ion-label>Seleccionar</ion-label>
+          </ion-item>
+          <ion-card-header>
+            <ion-item lines="none" class="ion-no-padding" color="transparent">
+              <ion-card-subtitle>Cotización: {{ solicitud.cotizacion }}</ion-card-subtitle>
+              <ion-chip slot="end" [color]="getEstadoColor(solicitud)">
+                <ion-label>{{ getEstado(solicitud) }}</ion-label>
+              </ion-chip>
+            </ion-item>
+            <ion-card-title>{{ solicitud.razonSocial }}</ion-card-title>
+            <ion-card-subtitle>Producto: {{ solicitud.codigoProducto }}</ion-card-subtitle>
+            <ion-card-subtitle *ngIf="solicitud.descripcionProducto" class="ion-text-wrap">
+              {{ solicitud.descripcionProducto }}
+            </ion-card-subtitle>
+          </ion-card-header>
+
+          <ion-card-content>
+            <div class="metric-grid">
+              <div>
+                <small>Venta</small>
+                <strong>{{ formatCurrency(solicitud.precioVenta) }}</strong>
+              </div>
+              <div>
+                <small>Mínimo</small>
+                <strong>{{ formatCurrency(solicitud.precioMinimo) }}</strong>
+              </div>
+              <div>
+                <small>Sobreprecio</small>
+                <strong>{{ formatNumber(solicitud.porcentajeSobrePrecio) }}%</strong>
+              </div>
+              <div>
+                <small>Total</small>
+                <strong>{{ formatCurrency(solicitud.totalVenta) }}</strong>
+              </div>
+            </div>
+
+            <p><b>Cliente:</b> {{ solicitud.codigoCliente }} - {{ solicitud.razonSocial }}</p>
+            <p><b>Vendedor:</b> {{ solicitud.vendedor }} {{ solicitud.nombreVendedor }}</p>
+            <p><b>Condición:</b> {{ solicitud.condicionPago || 'Sin condición' }}</p>
+            <p><b>Creación:</b> {{ formatDate(solicitud.fechaCreacion) }}</p>
+            <p class="ion-text-wrap"><b>Obs. solicitante:</b> {{ solicitud.observacionSolicitante }}</p>
+            <p class="ion-text-wrap" *ngIf="solicitud.observacionAprobador">
+              <b>Obs. aprobador:</b> {{ solicitud.observacionAprobador }}
+            </p>
+
+            <ion-row class="actions ion-align-items-center">
+              <ion-col size="12">
+                <ion-button expand="block" fill="outline" (click)="openDetalle(solicitud)">
+                  <ion-icon slot="start" name="eye-outline"></ion-icon>
+                  Ver detalle
+                </ion-button>
+              </ion-col>
+              <ion-col size="6" *ngIf="isPendiente(solicitud)">
+                <ion-button
+                  expand="block"
+                  color="success"
+                  [disabled]="procesandoId === solicitud.id || procesandoLote"
+                  (click)="confirmarAprobar(solicitud)">
+                  <ion-icon slot="start" name="checkmark-outline"></ion-icon>
+                  Aprobar
+                </ion-button>
+              </ion-col>
+              <ion-col size="6" *ngIf="isPendiente(solicitud)">
+                <ion-button
+                  expand="block"
+                  color="danger"
+                  [disabled]="procesandoId === solicitud.id || procesandoLote"
+                  (click)="confirmarRechazar(solicitud)">
+                  <ion-icon slot="start" name="close-outline"></ion-icon>
+                  Rechazar
+                </ion-button>
+              </ion-col>
+            </ion-row>
+          </ion-card-content>
+        </ion-card>
+      </ion-col>
+    </ion-row>
+  </ion-grid>
+
+  <ion-modal [keepContentsMounted]="true">
+    <ng-template>
+      <ion-datetime
+        id="fechaDesdeSolicitud"
+        presentation="date"
+        [(ngModel)]="fechaDesde"
+        (ionChange)="onFechaDesdeChange($event)">
+      </ion-datetime>
+    </ng-template>
+  </ion-modal>
+  <ion-modal [keepContentsMounted]="true">
+    <ng-template>
+      <ion-datetime
+        id="fechaHastaSolicitud"
+        presentation="date"
+        [(ngModel)]="fechaHasta"
+        (ionChange)="onFechaHastaChange($event)">
+      </ion-datetime>
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal [isOpen]="!!solicitudDetalle" (didDismiss)="closeDetalle()">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar color="primary">
+          <ion-title>Detalle de Solicitud</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="closeDetalle()">
+              <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding" *ngIf="solicitudDetalle">
+        <ion-chip [color]="getEstadoColor(solicitudDetalle)">
+          <ion-label>{{ getEstado(solicitudDetalle) }}</ion-label>
+        </ion-chip>
+
+        <ion-list>
+          <ion-item>
+            <ion-label>
+              <h2>{{ solicitudDetalle.cotizacion }} - {{ solicitudDetalle.codigoProducto }}</h2>
+              <h3 *ngIf="solicitudDetalle.descripcionProducto">
+                {{ solicitudDetalle.descripcionProducto }}
+              </h3>
+              <p>{{ solicitudDetalle.razonSocial }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>Precio venta</ion-label>
+            <ion-note slot="end">{{ formatCurrency(solicitudDetalle.precioVenta) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Precio mínimo</ion-label>
+            <ion-note slot="end">{{ formatCurrency(solicitudDetalle.precioMinimo) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Precio máximo</ion-label>
+            <ion-note slot="end">{{ formatCurrency(solicitudDetalle.precioMaximo) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>% sobreprecio</ion-label>
+            <ion-note slot="end">{{ formatNumber(solicitudDetalle.porcentajeSobrePrecio) }}%</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Cantidad</ion-label>
+            <ion-note slot="end">{{ formatNumber(solicitudDetalle.cantidad) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label>Total venta</ion-label>
+            <ion-note slot="end">{{ formatCurrency(solicitudDetalle.totalVenta) }}</ion-note>
+          </ion-item>
+          <ion-item>
+            <ion-label class="ion-text-wrap">
+              <h3>Observación solicitante</h3>
+              <p>{{ solicitudDetalle.observacionSolicitante || 'Sin observación' }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label class="ion-text-wrap">
+              <h3>Observación aprobador</h3>
+              <p>{{ solicitudDetalle.observacionAprobador || 'Sin observación' }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>Fecha creación</ion-label>
+            <ion-note slot="end">{{ formatDate(solicitudDetalle.fechaCreacion) }}</ion-note>
+          </ion-item>
+          <ion-item *ngIf="solicitudDetalle.fechaAprobado">
+            <ion-label>Fecha aprobación</ion-label>
+            <ion-note slot="end">{{ formatDate(solicitudDetalle.fechaAprobado) }}</ion-note>
+          </ion-item>
+          <ion-item *ngIf="solicitudDetalle.fechaRechazado">
+            <ion-label>Fecha rechazo</ion-label>
+            <ion-note slot="end">{{ formatDate(solicitudDetalle.fechaRechazado) }}</ion-note>
+          </ion-item>
+        </ion-list>
+
+        <ion-row *ngIf="isPendiente(solicitudDetalle)" class="ion-margin-top">
+          <ion-col size="6">
+            <ion-button
+              expand="block"
+              color="success"
+              [disabled]="procesandoId === solicitudDetalle.id"
+              (click)="confirmarAprobar(solicitudDetalle)">
+              Aprobar
+            </ion-button>
+          </ion-col>
+          <ion-col size="6">
+            <ion-button
+              expand="block"
+              color="danger"
+              [disabled]="procesandoId === solicitudDetalle.id"
+              (click)="confirmarRechazar(solicitudDetalle)">
+              Rechazar
+            </ion-button>
+          </ion-col>
+        </ion-row>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>
+
+<ion-footer *ngIf="segmento === 'todas'">
+  <ion-toolbar color="light">
+    <ion-row class="ion-justify-content-center ion-align-items-center">
+      <ion-button fill="clear" (click)="previousPage()" [disabled]="currentPage === 1 || cargando">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </ion-button>
+      <ion-text><strong>{{ currentPage }}</strong> / {{ totalPages }}</ion-text>
+      <ion-button fill="clear" (click)="nextPage()" [disabled]="currentPage === totalPages || cargando">
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </ion-button>
+    </ion-row>
+  </ion-toolbar>
+</ion-footer>

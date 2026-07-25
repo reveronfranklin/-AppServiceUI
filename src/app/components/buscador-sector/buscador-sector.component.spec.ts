@@ -1,19 +1,19 @@
 import { async, ComponentFixture, TestBed } from '@angular/core/testing';
 import { IonicModule } from '@ionic/angular';
 
-import { BuscadorMunicipioComponent } from './buscador-municipio.component';
+import { BuscadorSectorComponent } from './buscador-sector.component';
 
-describe('BuscadorMunicipioComponent', () => {
-  let component: BuscadorMunicipioComponent;
-  let fixture: ComponentFixture<BuscadorMunicipioComponent>;
+describe('BuscadorSectorComponent', () => {
+  let component: BuscadorSectorComponent;
+  let fixture: ComponentFixture<BuscadorSectorComponent>;
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ BuscadorMunicipioComponent ],
+      declarations: [ BuscadorSectorComponent ],
       imports: [IonicModule.forRoot()]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(BuscadorMunicipioComponent);
+    fixture = TestBed.createComponent(BuscadorSectorComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   }));

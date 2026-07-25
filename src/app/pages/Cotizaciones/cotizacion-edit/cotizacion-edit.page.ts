@@ -25,6 +25,8 @@ import { MtrClienteDireccionDto } from 'src/app/models/mtr-direcciones-clientes-
 import { ContactosListPage } from '../../contactos/contactos-list/contactos-list.page';
 import { ClienteRif } from 'src/app/models/cliente-rif';
 
+const rifAssignedToAnotherVendorKeywords = ['rif', 'existe', 'otro', 'vendedor'];
+
 @Component({
   selector: 'app-cotizacion-edit',
   templateUrl: './cotizacion-edit.page.html',
@@ -44,6 +46,8 @@ export class CotizacionEditPage implements OnInit {
   flagUpdate: boolean = false;
   flagDirEntrega: boolean = false;
   habilitarDetallePLus: boolean = false;
+  consultaRifModalOpen = false;
+  consultaRifModalValue = '';
 
   usuario: any;
   appGeneralQuotesGetDto: AppGeneralQuotesGetDto = new AppGeneralQuotesGetDto();
@@ -170,6 +174,7 @@ export class CotizacionEditPage implements OnInit {
     this.flagInsert = true;
     this.flagDirEntrega = true;
     this.nombreCliente = item.nombreCliente;
+    const direccion = this.trimTrailingSpaces(item.direccion);
 
     this.form.patchValue({
       idCliente: item.codigo,
@@ -177,7 +182,7 @@ export class CotizacionEditPage implements OnInit {
       idDireccionFacturar: item.idDireccionCliente,
       rif: item.rifCliente,
       razonSocial: item.nombreCliente,
-      direccion: item.direccion,
+      direccion,
       idMunicipio: item.municipio,
       descripcionMunicipio: item.nombreMunicipio,
       idMtrTipoMoneda: 2,
@@ -196,6 +201,9 @@ export class CotizacionEditPage implements OnInit {
     await modal.present();
     const { data } = await modal.onDidDismiss();
     if (data) {
+      const direccionSeleccionada = data.mtrDireccionesDto || null;
+      const direccion = this.trimTrailingSpaces(direccionSeleccionada?.direccion);
+
       this.nombreCliente = data.nombreCliente;
       this.flagDirEntrega = data.clienteSeleccionado !== '000000';
       console.log('datos retornados por el modal', data);
@@ -203,11 +211,12 @@ export class CotizacionEditPage implements OnInit {
         idCliente: data.clienteSeleccionado,
         rif: data.rif,
         razonSocial: data.nombreCliente,
-        direccion: data.mtrDireccionesDto?.direccion,
+        direccion,
         idDireccionFacturar: data.idDireccion,
         idDireccionEntregar: data.idDireccion,
       });
-      this.cotizaService.direccionFacturarCliente$.next(data.mtrDireccionesDto);
+      this.cotizaService.direccionFacturarCliente$.next(direccionSeleccionada);
+      this.cotizaService.direccionEntregaCliente$.next(direccionSeleccionada);
     }
   }
 
@@ -278,18 +287,24 @@ export class CotizacionEditPage implements OnInit {
         next: (res) => {
           if (res.meta.isValid) {
             this.openToast(res.meta.message, 'success');
+            this.appGeneralQuotesGetDto = res.data;
             this.cotizaService.cotizacion$.next(res.data);
             this.habilitarDetallePLus = true;
             this.flagInsert = false;
             this.flagUpdate = true;
+            this._editar = true;
+            this._cotizacionTitulo = res.data?.cotizacion || '';
+            this.editable = res.data?.appStatusQuoteGetDto?.editable ?? true;
           } else {
-            this.openToast(res.meta.message, 'danger');
+            this.handleCotizacionErrorMessage(res.meta.message);
           }
           this._guardando = false;
         },
-        error: () => {
+        error: (err) => {
           this._guardando = false;
-          this.openToast('Error de conexión', 'danger');
+          this.handleCotizacionErrorMessage(
+            this.resolveCotizacionErrorMessage(err, 'Error de conexión'),
+          );
         },
       });
   }
@@ -308,17 +323,59 @@ export class CotizacionEditPage implements OnInit {
       next: (res) => {
         if (res.meta.isValid) {
           this.openToast(res.meta.message, 'success');
+          this.appGeneralQuotesGetDto = res.data;
           this.cotizaService.cotizacion$.next(res.data);
         } else {
-          this.openToast(res.meta.message, 'danger');
+          this.handleCotizacionErrorMessage(res.meta.message);
         }
         this._guardando = false;
       },
-      error: () => {
+      error: (err) => {
         this._guardando = false;
-        this.openToast('Error de servidor', 'danger');
+        this.handleCotizacionErrorMessage(
+          this.resolveCotizacionErrorMessage(err, 'Error de servidor'),
+        );
       },
     });
+  }
+
+  private resolveCotizacionErrorMessage(err: any, fallback: string): string {
+    return err?.error?.meta?.message || err?.error?.message || err?.message || fallback;
+  }
+
+  private handleCotizacionErrorMessage(message: string): void {
+    const normalizedMessage = this.normalizeMessage(message);
+    this.openToast(message, 'danger');
+    if (!this.isRifAssignedToAnotherVendorMessage(normalizedMessage)) return;
+
+    this.openConsultaPorRifModal();
+  }
+
+  openConsultaPorRifModal(): void {
+    this.consultaRifModalValue = this.form.get('rif')?.value || '';
+    this.consultaRifModalOpen = true;
+  }
+
+  closeConsultaPorRifModal(): void {
+    this.consultaRifModalOpen = false;
+  }
+
+  private normalizeMessage(message: unknown): string {
+    return (message || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
+
+  private isRifAssignedToAnotherVendorMessage(message: string): boolean {
+    return rifAssignedToAnotherVendorKeywords.every((keyword) =>
+      message.includes(keyword),
+    );
+  }
+
+  private trimTrailingSpaces(value: unknown): string {
+    return (value || '').toString().replace(/\s+$/g, '');
   }
 
   validarMunicipio(): boolean {
@@ -334,7 +391,17 @@ export class CotizacionEditPage implements OnInit {
   }
 
   ListDetalleCotizacion() {
-    this.router.navigate(['menu/list-detalle-cotizacion']);
+    const detalles = this.appGeneralQuotesGetDto.appDetailQuotesGetDto || [];
+    const item = detalles[0];
+
+    this.cotizaService.cotizacion$.next(this.appGeneralQuotesGetDto);
+    this.router.navigate(['edit-detalle-cotizacion'], {
+      state: {
+        cotizacion: this.appGeneralQuotesGetDto,
+        item,
+        operacion: item ? 1 : 0,
+      },
+    });
   }
 
   async openToast(message: string, color: string) {

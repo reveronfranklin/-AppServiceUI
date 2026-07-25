@@ -125,18 +125,32 @@ export class CotizacionGanarPerderEditPage implements OnInit {
 
     this.cotizacionesService
       .UpdateGanarPerder(this.appGanarPerderUpdateDto)
-      .subscribe((result) => {
-        console.log(result);
+      .subscribe(
+        (result) => {
+          console.log(result);
 
-        if (result.meta.isValid === true) {
-          this.openToast(result.meta.message, 'success');
-          this.guardando = false;
-          this.dismiss();
-        } else {
-          this.openToast(result.meta.message, 'danger');
+          if (result.meta && result.meta.isValid === true) {
+            this.openToast(result.meta.message, 'success');
+            this.guardando = false;
+            this.dismiss();
+          } else {
+            const message =
+              result && result.meta && result.meta.message
+                ? result.meta.message
+                : 'No se pudo guardar ganar/perder.';
+            this.openToast(message, 'danger');
+            this.guardando = false;
+          }
+        },
+        (error) => {
+          const message =
+            error && error.error && error.error.message
+              ? error.error.message
+              : 'Error al procesar ganar/perder.';
+          this.openToast(message, 'danger');
           this.guardando = false;
         }
-      });
+      );
   }
 
   async openToast(message, color) {

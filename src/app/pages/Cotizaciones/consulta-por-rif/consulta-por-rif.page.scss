@@ -1,0 +1,207 @@
+ion-card-title {
+  font-size: 1rem;
+}
+
+.autocomplete-container {
+  position: relative;
+}
+
+.autocomplete-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+.autocomplete-suggestions ion-item h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.autocomplete-suggestions ion-item p {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+ion-note {
+  display: block;
+  margin-top: 6px;
+}
+
+ion-card-title ion-button {
+  margin: 0;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.rif-table {
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.rif-table th,
+.rif-table td {
+  border: 1px solid #d9d9d9;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.rif-table th {
+  background-color: #f4f6f9;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.rif-table tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+.export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.filtro-orden {
+  margin: 8px 0 12px;
+}
+
+.filtros-inline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.filtro-item {
+  flex: 1 1 0;
+  min-width: 220px;
+}
+
+.filtro-label {
+  display: block;
+  font-size: 0.86rem;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.filtro-input {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.95rem;
+  color: #1f2937;
+  padding: 10px 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.filtro-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+@media (max-width: 768px) {
+  .filtro-orden {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  .filtros-inline {
+    display: flex !important;
+    flex-direction: column;
+    gap: 6px;
+    align-items: stretch;
+    visibility: visible !important;
+  }
+
+  .filtro-item {
+    display: block !important;
+    min-width: 100%;
+    width: 100%;
+    visibility: visible !important;
+  }
+}
+
+:host(.consulta-rif-modal-content) {
+  display: block;
+  height: 100%;
+}
+
+:host(.consulta-rif-modal-content) ion-content {
+  --background: #f5f7fb;
+  --padding-top: 8px;
+  --padding-bottom: 12px;
+  --padding-start: 10px;
+  --padding-end: 10px;
+}
+
+:host(.consulta-rif-modal-content) ion-card {
+  margin: 8px 0;
+}
+
+:host(.consulta-rif-modal-content) ion-card-header {
+  padding: 10px 12px 6px;
+}
+
+:host(.consulta-rif-modal-content) ion-card-content {
+  padding: 8px 12px 12px;
+}
+
+:host(.consulta-rif-modal-content) ion-card-title {
+  font-size: 0.95rem;
+}
+
+:host(.consulta-rif-modal-content) .table-container {
+  max-height: 34vh;
+  overflow: auto;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+}
+
+:host(.consulta-rif-modal-content) .rif-table {
+  min-width: 900px;
+  font-size: 0.76rem;
+}
+
+:host(.consulta-rif-modal-content) .rif-table th,
+:host(.consulta-rif-modal-content) .rif-table td {
+  padding: 6px 8px;
+}
+
+:host(.consulta-rif-modal-content) .rif-table th {
+  top: 0;
+}
+
+:host(.consulta-rif-modal-content) .export-actions {
+  margin-top: 4px;
+}
+
+:host(.consulta-rif-modal-content) .filtros-inline {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+:host(.consulta-rif-modal-content) .filtro-item {
+  min-width: 160px;
+}

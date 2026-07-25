@@ -69,8 +69,8 @@ export class EspecificacionesPage implements OnInit {
 
     this.partesFilter = {
       cotizacion: this.cotizacion.cotizacion,
-      renglon: 1,
-      propuesta: 1,
+      renglon: this.cotizacion.appDetailQuotesGetDto[0].renglon,
+      propuesta: this.cotizacion.appDetailQuotesGetDto[0].propuesta || 1,
       idAppDetailQuote: this.cotizacion.appDetailQuotesGetDto[0].id,
       idProducto: this.cotizacion.appDetailQuotesGetDto[0].idProducto,
       //this.searchText
@@ -773,8 +773,8 @@ export class EspecificacionesPage implements OnInit {
   refresh() {
     this.partesFilter = {
       cotizacion: this.cotizacion.cotizacion,
-      renglon: 1,
-      propuesta: 1,
+      renglon: this.cotizacion.appDetailQuotesGetDto[0].renglon,
+      propuesta: this.cotizacion.appDetailQuotesGetDto[0].propuesta || 1,
       idAppDetailQuote: this.cotizacion.appDetailQuotesGetDto[0].id,
       idProducto: this.cotizacion.appDetailQuotesGetDto[0].idProducto,
       //this.searchText

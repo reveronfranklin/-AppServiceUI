@@ -115,6 +115,27 @@ const routes: Routes = [
           ).then((m) => m.CotizacionesListPageModule),
       },
       {
+        path: 'solicitud-aprobacion-precios',
+        loadChildren: () =>
+          import(
+            './../Cotizaciones/solicitud-aprobacion-precios/solicitud-aprobacion-precios.module'
+          ).then((m) => m.SolicitudAprobacionPreciosPageModule),
+      },
+      {
+        path: 'solicitud-aprobadores',
+        loadChildren: () =>
+          import(
+            './../Cotizaciones/solicitud-aprobadores/solicitud-aprobadores.module'
+          ).then((m) => m.SolicitudAprobadoresPageModule),
+      },
+      {
+        path: 'consulta-por-rif',
+        loadChildren: () =>
+          import(
+            './../Cotizaciones/consulta-por-rif/consulta-por-rif.module'
+          ).then((m) => m.ConsultaPorRifPageModule),
+      },
+      {
         path: 'cotizacion-edit',
         loadChildren: () =>
           import(
@@ -213,8 +234,8 @@ const routes: Routes = [
       {
         path: 'list-detalle-cotizacion',
         loadChildren: () =>
-          import('./../Cotizaciones/cotizacion-detalle/list/list.module').then(
-            (m) => m.ListPageModule
+          import('./../Cotizaciones/cotizacion-detalle/edit/edit.module').then(
+            (m) => m.EditPageModule
           ),
       },
       {
@@ -286,6 +307,13 @@ const routes: Routes = [
         loadChildren: () =>
           import('./../productos/search/search.module').then(
             (m) => m.SearchPageModule
+          ),
+      },
+      {
+        path: 'search-natural',
+        loadChildren: () =>
+          import('./../productos/search-natural/search-natural.module').then(
+            (m) => m.SearchNaturalPageModule
           ),
       },
       {

@@ -1,0 +1,105 @@
+.filter-bar {
+  border-bottom: 1px solid var(--ion-color-light-shade);
+}
+
+.empty-state {
+  color: var(--ion-color-medium);
+
+  ion-icon {
+    color: var(--ion-color-medium);
+    font-size: 3rem;
+  }
+}
+
+.auto-refresh-status {
+  color: var(--ion-color-medium);
+  align-items: center;
+  display: flex;
+  font-size: 0.95rem;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 4px 16px 8px;
+
+  strong {
+    color: var(--ion-color-primary);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+.batch-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 6px 8px 8px;
+}
+
+.batch-actions__selection,
+.batch-actions__commands {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.batch-actions__selection ion-text {
+  font-size: 0.9rem;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.selection-row {
+  --min-height: 42px;
+  font-size: 0.9rem;
+}
+
+.solicitud-card {
+  height: 100%;
+
+  ion-card-title {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+
+  div {
+    border: 1px solid var(--ion-color-light-shade);
+    border-radius: 6px;
+    padding: 8px;
+    min-width: 0;
+  }
+
+  small {
+    color: var(--ion-color-medium);
+    display: block;
+    font-size: 0.72rem;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 767px) {
+  .batch-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .batch-actions__commands ion-button {
+    flex: 1 1 140px;
+  }
+}

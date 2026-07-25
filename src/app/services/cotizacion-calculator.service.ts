@@ -1,7 +1,4 @@
 import { Injectable } from '@angular/core';
-import { PrecioDto } from '../interfaces/precio';
-import { AppGeneralQuotesGetDto } from '../models/app-general-quotes-get-dto';
-import { AppDetailQuotesGetDto } from '../models/app-detail-quotes-get-dto';
 import { AppProductConversionGetDto } from '../models/app-product-conversion-get-dto';
 import { AppPriceDto } from '../models/app-price-dto';
 
@@ -118,66 +115,4 @@ export class CotizacionCalculatorService {
     return price;
   }
 
-  // Lógica para determinar el color del toolbar y si requiere aprobación
-  checkAprobacion(params: {
-    newPrecioMasFlete: number;
-    precioUsd: number;
-    requiereEstimacion: boolean;
-    porDebajoDeCantidadMinima: boolean;
-    idEstatus: number;
-    aprobado: boolean;
-    flagCerrado: boolean;
-    operacion: number;
-    isBs: boolean;
-  }): { requiereAprobacion: boolean; color: string; solicitarPrecio: boolean; mensajeBoton: string } {
-    
-    let requiereAprobacion = false;
-    let color = 'primary';
-    let solicitarPrecio = false;
-    let mensajeBoton = '';
-
-    const { 
-      newPrecioMasFlete, 
-      precioUsd, 
-      requiereEstimacion, 
-      porDebajoDeCantidadMinima, 
-      idEstatus, 
-      aprobado, 
-      flagCerrado,
-      operacion,
-      isBs
-    } = params;
-
-    if (operacion === 1) { // editar
-      if (idEstatus >= 5) {
-        return { requiereAprobacion: false, color: 'primary', solicitarPrecio: false, mensajeBoton: '' };
-      }
-
-      if (aprobado && flagCerrado) {
-        color = 'success';
-      } else {
-        if (newPrecioMasFlete > precioUsd || requiereEstimacion || porDebajoDeCantidadMinima) {
-          requiereAprobacion = true;
-          color = 'danger';
-          solicitarPrecio = true;
-          mensajeBoton = 'Enviar Aprobación Por Precio y Salvar';
-        }
-      }
-    } else { // nuevo
-      if (newPrecioMasFlete > precioUsd || requiereEstimacion || porDebajoDeCantidadMinima) {
-        requiereAprobacion = true;
-        color = 'danger';
-        solicitarPrecio = true;
-        mensajeBoton = requiereEstimacion ? ' Enviar Aprobación Por Estimación y Salvar' : ' Enviar Aprobación Por Precio y Salvar';
-      }
-      if (isBs) {
-        requiereAprobacion = true;
-        color = 'danger';
-        solicitarPrecio = true;
-        mensajeBoton = ' Enviar Aprobación Por Precio y Salvar';
-      }
-    }
-
-    return { requiereAprobacion, color, solicitarPrecio, mensajeBoton };
-  }
 }

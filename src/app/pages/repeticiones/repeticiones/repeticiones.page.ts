@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ActionSheetController, ModalController } from '@ionic/angular';
-import { Subject } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/Operators';
 import { BuscadorProductosComponent } from 'src/app/components/buscador-productos/buscador-productos.component';
 import { AppOrdenProductoRepeticionFilterDto } from 'src/app/interfaces/app-orden-producto-repeticion-filter';
@@ -24,6 +24,8 @@ import { GeneralService } from 'src/app/services/general.service';
 import { RepeticionesService } from 'src/app/services/repeticiones.service';
 import { AppProductsGetDto } from '../../../models/app-products-get-dto';
 import { IUsuario } from 'src/app/interfaces/iusuario';
+import { ProductoService } from 'src/app/services/producto.service';
+import { catchError, map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-repeticiones',
@@ -94,6 +96,7 @@ export class RepeticionesPage implements OnDestroy, OnInit {
     private actionSheetCtrl: ActionSheetController,
     public generalService: GeneralService,
     private modalCtrl: ModalController,
+    private productoService: ProductoService,
 
   ) { }
 
@@ -119,7 +122,9 @@ export class RepeticionesPage implements OnDestroy, OnInit {
 
         console.log('result de lista repeticiones: result.data ', result.data);
         this.listaRepeticiones = result.data;
-        this.appOrdenProductoRepeticionGetDto = result.data.appOrdenProductoRepeticionGetDto;
+        this.appOrdenProductoRepeticionGetDto = result.data.appOrdenProductoRepeticionGetDto || [];
+        this.appOrdenProductoRepeticionGetDtoOriginal = [...this.appOrdenProductoRepeticionGetDto];
+        this.appOrdenProductoRepeticionGetDtoBK = [...this.appOrdenProductoRepeticionGetDto];
         this.productos = result.data.appRepeticionClienteProducto;
         console.log('result de lista repeticiones: ', this.listaRepeticiones);
 
@@ -160,8 +165,11 @@ export class RepeticionesPage implements OnDestroy, OnInit {
 
 
         this.listaRepeticiones = result.data;
-        this.appOrdenProductoRepeticionGetDto = result.data.appOrdenProductoRepeticionGetDto;
+        this.appOrdenProductoRepeticionGetDto = result.data.appOrdenProductoRepeticionGetDto || [];
+        this.appOrdenProductoRepeticionGetDtoOriginal = [...this.appOrdenProductoRepeticionGetDto];
+        this.appOrdenProductoRepeticionGetDtoBK = [...this.appOrdenProductoRepeticionGetDto];
         this.productos = result.data.appRepeticionClienteProducto;
+        this.orden = '';
         this.appOrdenProductoRepeticionSelected = null;
         this.nombresForma = null;
         this.medidasBasica = null;
@@ -180,12 +188,41 @@ export class RepeticionesPage implements OnDestroy, OnInit {
   }
 
   ordenChanged(event) {
+    this.orden = this.getSearchValue(event);
+    this.filtrarSoloPorOrden();
+  }
 
+  limpiarFiltros() {
+    this.orden = '';
+    this.producto = null;
+    this.nombreForma = null;
+    this.medidaBasica = null;
+    this.medidaOpuesta = null;
+    this.cantidadParte = null;
+    this.cantidadTinta = null;
+    this.papelPrimeraParte = null;
+    this.papelSegundaParte = null;
+    this.papelTerceraParte = null;
+    this.papelCuartaParte = null;
+    this.papelQuintaParte = null;
 
-    this.orden = event;
+    this.nombresForma = [];
+    this.medidasBasica = [];
+    this.medidasOpuesta = [];
+    this.cantidadPartes = [];
+    this.cantidadTintas = [];
+    this.papelesPrimeraParte = [];
+    this.papelesSegundaParte = [];
+    this.papelesTerceraParte = [];
+    this.papelesCuartaParte = [];
+    this.papelesQuintaParte = [];
 
-
-    this.subjectKeyUp.next('ordenChanged');
+    this.appOrdenProductoRepeticionGetDto = [
+      ...(this.appOrdenProductoRepeticionGetDtoOriginal || []),
+    ];
+    this.appOrdenProductoRepeticionGetDtoBK = [
+      ...(this.appOrdenProductoRepeticionGetDtoOriginal || []),
+    ];
   }
   onSave(){
     this.showLoading=true;
@@ -258,32 +295,93 @@ export class RepeticionesPage implements OnDestroy, OnInit {
 
 
   seleccionarOrden(item: AppOrdenProductoRepeticionGetDto) {
+    const ordenSeleccionada = item || this.appOrdenProductoRepeticionSelected;
 
-    item = this.appOrdenProductoRepeticionSelected;
-    if (this.cotizacion.appDetailQuotesGetDto.length > 0) {
-      this.cotizacion.appDetailQuotesGetDto[0].ordenAnterior = +item.orden;
-    }
-    this.cotizacion.ordenAnterior = +item.orden;
-    this.cotizacion.appOrdenProductoRepeticionGetDto = item;
-    console.log('Item seleccionado de Repeticion',item);
-
-
-    let itemProd: AppDetailQuotesGetDto = new AppDetailQuotesGetDto();
-    itemProd = this.cotizacion.appDetailQuotesGetDto[0];
-
-    this.cotizacionesService.cotizacion$.next(this.cotizacion);
-
-
-
-    //voy al formulario de edicion
-    if (itemProd) {
-
-      this.router.navigate(['edit-detalle-cotizacion'], { state: { cotizacion: this.cotizacion, item: itemProd, operacion: 1 } });
-    } else {
-
-      this.router.navigate(['edit-detalle-cotizacion'], { state: { cotizacion: this.cotizacion, item: itemProd, operacion: 0 } });
+    if (!ordenSeleccionada) {
+      this.generalService.presentToast('Seleccione una orden anterior', 'warning');
+      return;
     }
 
+    if (!this.tieneProductoOrden(ordenSeleccionada)) {
+      this.generalService.presentToast(
+        'La orden anterior no tiene producto asociado',
+        'warning',
+      );
+      return;
+    }
+
+    this.completarProductoOrden(ordenSeleccionada).subscribe((orden) => {
+      if (!orden?.appProductsGetDto?.id) {
+        this.generalService.presentToast(
+          'No se pudo cargar el producto asociado a la orden anterior',
+          'danger',
+        );
+        return;
+      }
+
+      if (this.cotizacion.appDetailQuotesGetDto.length > 0) {
+        this.cotizacion.appDetailQuotesGetDto[0].ordenAnterior = +orden.orden;
+      }
+      this.cotizacion.ordenAnterior = +orden.orden;
+      this.cotizacion.appOrdenProductoRepeticionGetDto = orden;
+      console.log('Item seleccionado de Repeticion', orden);
+
+      const itemProd = this.cotizacion.appDetailQuotesGetDto[0];
+
+      this.cotizacionesService.cotizacion$.next(this.cotizacion);
+
+      if (itemProd) {
+        this.router.navigate(['edit-detalle-cotizacion'], {
+          state: { cotizacion: this.cotizacion, item: itemProd, operacion: 1 },
+        });
+      } else {
+        this.router.navigate(['edit-detalle-cotizacion'], {
+          state: { cotizacion: this.cotizacion, item: itemProd, operacion: 0 },
+        });
+      }
+    });
+  }
+
+  private tieneProductoOrden(item: AppOrdenProductoRepeticionGetDto): boolean {
+    return this.getProductoOrdenId(item) > 0;
+  }
+
+  private completarProductoOrden(item: AppOrdenProductoRepeticionGetDto) {
+    const productoOrden = this.getProductoOrden(item);
+    if (productoOrden?.id) {
+      item.appProductsGetDto = productoOrden;
+      return of(item);
+    }
+
+    const idProducto = this.getProductoOrdenId(item);
+
+    const filter = {
+      pageSize: 1,
+      pageNumber: 1,
+      id: idProducto,
+      code: '',
+      description1: '',
+      description2: '',
+      searchText: '',
+    };
+
+    return this.productoService.GetAllVertical(filter).pipe(
+      map((resp) => {
+        const producto = Array.isArray(resp?.data) ? resp.data[0] : null;
+        item.appProductsGetDto = producto || null;
+        return item;
+      }),
+      catchError(() => of(item)),
+    );
+  }
+
+  private getProductoOrden(item: AppOrdenProductoRepeticionGetDto): AppProductsGetDto {
+    return item?.appProductsGetDto || (item as any)?.appProductGetDto || null;
+  }
+
+  private getProductoOrdenId(item: AppOrdenProductoRepeticionGetDto): number {
+    const productoOrden = this.getProductoOrden(item);
+    return Number(item?.appproductsId || productoOrden?.id || 0);
   }
 
   setItem(item) {
@@ -534,14 +632,94 @@ export class RepeticionesPage implements OnDestroy, OnInit {
               r.papelQuintaParte === this.papelQuintaParte.papelquintaparte);
 
         break;
+      case 'ordenChanged':
+        break;
 
 
     }
 
+    if (origenLlamada !== 'ordenChanged') {
+      this.appOrdenProductoRepeticionGetDtoBK = [...this.appOrdenProductoRepeticionGetDto];
+    }
+
+    this.appOrdenProductoRepeticionGetDto = this.aplicarFiltroOrden(
+      this.appOrdenProductoRepeticionGetDto,
+    );
 
 
 
 
+  }
+
+  private aplicarFiltroOrden(
+    lista: AppOrdenProductoRepeticionGetDto[],
+  ): AppOrdenProductoRepeticionGetDto[] {
+    if (!lista || !lista.length) {
+      return [];
+    }
+
+    const ordenBuscada = (this.orden || '').trim();
+    if (!ordenBuscada) {
+      return [...lista];
+    }
+
+    const ordenBuscadaNormalizada = this.normalizarOrden(ordenBuscada);
+
+    return lista.filter((item) => {
+      const ordenItem = item?.orden?.toString() || '';
+      const ordenItemNormalizada = this.normalizarOrden(ordenItem);
+
+      return ordenItem.includes(ordenBuscada) ||
+        ordenItemNormalizada.includes(ordenBuscadaNormalizada);
+    });
+  }
+
+  private normalizarOrden(valor: string): string {
+    return (valor || '').replace(/[^\d]/g, '');
+  }
+
+  private filtrarSoloPorOrden(): void {
+    const base =
+      this.appOrdenProductoRepeticionGetDtoBK?.length
+        ? this.appOrdenProductoRepeticionGetDtoBK
+        : this.appOrdenProductoRepeticionGetDtoOriginal;
+
+    this.appOrdenProductoRepeticionGetDto = this.aplicarFiltroOrden([
+      ...(base || []),
+    ]);
+  }
+
+  private getSearchValue(event: any): string {
+    if (typeof event === 'string') {
+      return event.trim();
+    }
+
+    return (
+      event?.detail?.value ??
+      event?.target?.value ??
+      event?.srcElement?.value ??
+      ''
+    )
+      .toString()
+      .trim();
+  }
+
+  esOrdenCoincidente(item: AppOrdenProductoRepeticionGetDto): boolean {
+    if (!item) {
+      return false;
+    }
+
+    const criterio = (this.orden || '').trim();
+    if (!criterio) {
+      return false;
+    }
+
+    const ordenItem = item?.orden?.toString() || '';
+    const criterioNormalizado = this.normalizarOrden(criterio);
+    const ordenNormalizado = this.normalizarOrden(ordenItem);
+
+    return ordenItem.includes(criterio) ||
+      ordenNormalizado.includes(criterioNormalizado);
   }
 
 }

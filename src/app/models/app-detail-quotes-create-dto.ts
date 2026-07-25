@@ -22,6 +22,7 @@ export class AppDetailQuotesCreateDto {
   quantityPerPackage: number;
   solicitarPrecio: boolean;
   obsSolicitud: string;
+  obsSolicitudSobreprecio: string;
   medidaBasica: string;
   medidaOpuesta: string;
   valorConvertido: number;
@@ -29,6 +30,7 @@ export class AppDetailQuotesCreateDto {
   cantidadPorUnidadProduccion: number;
   calculoId: number;
   unitPriceBaseProductionMaximo: number;
+  porcMaximoSobrePrecio: number;
   forma: string;
   salida: string;
   presentacion: string;

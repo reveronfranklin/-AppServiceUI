@@ -79,6 +79,8 @@ export class CobranzaEditPage implements OnInit {
   fechaPago: string;
   fechaPagoFormated: string;
   showPicker: boolean = false;
+  isUsuarioVendedor: boolean = false;
+  sellerInfoMode: boolean = false;
   defaultDate = '1987-06-30';
   constructor(
     public activateRoute: ActivatedRoute,
@@ -110,6 +112,12 @@ export class CobranzaEditPage implements OnInit {
 
   async ngOnInit() {
     this.usuario = this.gs.GetUsuario();
+    const vendedores = JSON.parse(localStorage.getItem('listVendedores') || '[]');
+    this.isUsuarioVendedor = vendedores.some(
+      (vendedor) =>
+        String(vendedor?.codigo || '').trim().toUpperCase() ===
+        String(this.usuario?.user || '').trim().toUpperCase(),
+    );
     this.titulo = 'Editar Cobro';
     this.parametroId = 'id';
     this.documento = +this.activateRoute.snapshot.params[this.parametroId];
@@ -212,10 +220,17 @@ export class CobranzaEditPage implements OnInit {
     await this.generalCobranzaService
       .GetAllGeneralCobranzasByDocumento(this.generalCobranzaQueryFilter)
       .subscribe((resp) => {
+        this.itemcobGeneralCobranzaDto = resp.data;
+        this.sellerInfoMode = this.isUsuarioVendedor && this.documento > 1 &&
+          (resp.data.flagEnviado === true || resp.data.flagConfirmado === true ||
+           resp.data.flagAprobado === true || resp.data.flagAnulado === true ||
+           resp.data.flagReversado === true);
         localStorage.setItem('itemGeneralCobranza', JSON.stringify(resp.data));
         console.log('itemGeneralCobranza', resp.data);
         console.log('itemGeneralCobranza email', resp.data.emailCliente);
         this.emailField.setValue(resp.data.emailCliente);
+        this.form.get('observacionVendedor').setValue(resp.data.observacionVendedor || '');
+        this.form.get('observacionCobranzas').setValue(resp.data.observacionCobranzas || '');
         if (resp.data.documento > 1) {
           const fecha = moment(resp.data.fechaTransaccion).toISOString();
           this.fechaTransaccionField.setValue(fecha);
@@ -295,6 +310,8 @@ export class CobranzaEditPage implements OnInit {
       numReferencia: ['', [Validators.required]],
 
       email: ['', [Validators.required, Validators.email]],
+      observacionVendedor: ['', [Validators.maxLength(4000)]],
+      observacionCobranzas: ['', [Validators.maxLength(4000)]],
     });
   }
 
@@ -322,6 +339,8 @@ export class CobranzaEditPage implements OnInit {
       this.itemcobGeneralCobranzaDto.numReferencia =
         this.numReferenciaField.value;
       this.itemcobGeneralCobranzaDto.emailCliente = this.emailField.value;
+      this.itemcobGeneralCobranzaDto.observacionVendedor = this.form.get('observacionVendedor').value || '';
+      this.itemcobGeneralCobranzaDto.observacionCobranzas = this.form.get('observacionCobranzas').value || '';
       let date = new Date();
       this.itemcobGeneralCobranzaDto.fechaRegistro = date;
       this.itemcobGeneralCobranzaDto.usuarioRegistro = this.usuario.user;
@@ -354,6 +373,28 @@ export class CobranzaEditPage implements OnInit {
             }
           );
       } else {
+        if (this.sellerInfoMode) {
+          this.generalCobranzaService.UpdateSellerInformation({
+            documento: this.documento,
+            observacionVendedor: this.form.get('observacionVendedor').value || '',
+            usuarioConectado: this.usuario.user
+          }).subscribe(
+            (resp) => {
+              this.show = false;
+              if (!resp.meta.isValid) {
+                this.openToast(resp.meta.message, 'danger');
+              } else {
+                this.openToast('Información del vendedor actualizada satisfactoriamente', 'success');
+                this.refresh();
+              }
+            },
+            (error) => {
+              this.openToast(error, 'danger');
+              this.show = false;
+            }
+          );
+          return;
+        }
         console.log('Objeto a guardar', this.itemcobGeneralCobranzaDto);
         this.generalCobranzaService
           .UpdateGeneralCobranzas(this.itemcobGeneralCobranzaDto)

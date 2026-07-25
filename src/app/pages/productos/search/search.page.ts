@@ -34,6 +34,7 @@ import { BuscadorUnidadesComponent } from 'src/app/components/buscador-unidades/
 import { CondicionPagoQueryFilter } from 'src/app/interfaces/condicion-pago-query-filter';
 import { CondicionPagoDto } from 'src/app/models/CondicionPagoDto';
 import { CondicionesPagoService } from 'src/app/services/condiciones-pago.service';
+import { GetPriceQueryFilter } from 'src/app/interfaces/get-price-fileter';
 @Component({
   selector: 'app-search',
   templateUrl: './search.page.html',
@@ -84,7 +85,7 @@ export class SearchPage implements OnInit {
     private router: Router,
     private modalCtrl: ModalController,
     private formBuilder: FormBuilder,
-    private condicionesPago: CondicionesPagoService
+    private condicionesPago: CondicionesPagoService,
   ) {
     this.usuario = this.generalService.GetUsuario();
     this.buildForm();
@@ -108,7 +109,7 @@ export class SearchPage implements OnInit {
         this.listCondicionPagoDto = resp.data;
         console.log(
           'this.condicionPagoDto en calculadora',
-          this.listCondicionPagoDto
+          this.listCondicionPagoDto,
         );
       });
 
@@ -116,7 +117,7 @@ export class SearchPage implements OnInit {
     //this.appSubcategoryGetDto = subcategoryAll.filter(x=> x.active==true);
 
     const categorySorted = subcategoryAll.sort((a, b) =>
-      a.description < b.description ? -1 : 1
+      a.description < b.description ? -1 : 1,
     );
     this.appSubcategoryGetDto = categorySorted.filter((x) => x.active === true);
 
@@ -144,12 +145,12 @@ export class SearchPage implements OnInit {
     this.condicionPagoCodigo = event.target.value;
     this.form.get('condicionPago').setValue(event.target.value);
     this.condicionPagoDto = this.listCondicionPagoDto.find(
-      (x) => x.codigo === this.condicionPagoCodigo
+      (x) => x.codigo === this.condicionPagoCodigo,
     );
     this.subjectKeyUp.next('onChangeCondicionPago');
     console.log(
       'this.condicionPagoCodigo seleccionada',
-      this.condicionPagoCodigo
+      this.condicionPagoCodigo,
     );
   }
   onChangeSubCategoriaId(event) {
@@ -184,7 +185,7 @@ export class SearchPage implements OnInit {
   refresh() {
     this.showLoading = true;
     this.appProdutsQueryFilter.subCategoria = this.subCategoryid;
-    this.productoService.GetAllAppProducts(this.appProdutsQueryFilter);
+    this.productoService.GetAllAppProductsVertical(this.appProdutsQueryFilter);
     this.showLoading = false;
   }
 
@@ -197,14 +198,14 @@ export class SearchPage implements OnInit {
   }
   onChangeVariableId(event) {
     this.listAppVariableSearchGetDto = this.listAppVariableSearchGetDto.filter(
-      (item) => item.appVariableId !== event.detail.value.appVariableId
+      (item) => item.appVariableId !== event.detail.value.appVariableId,
     );
 
     this.listAppVariableSearchGetDto.push(event.detail.value);
 
     console.log(
       'Al seleccionar variable this.listAppVariableSearchGetDto: ',
-      this.listAppVariableSearchGetDto
+      this.listAppVariableSearchGetDto,
     );
 
     this.buscar();
@@ -213,6 +214,7 @@ export class SearchPage implements OnInit {
   onSelect(producto: AppProductsGetDto) {
     this.appProduct = producto;
     this.appProductConversionGetDto = producto.conversiones[0];
+    this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
     this.form
       .get('unidad')
       .setValue(this.appProductConversionGetDto.appUnitsAlternativaDescription);
@@ -289,6 +291,7 @@ export class SearchPage implements OnInit {
       switch (this.appProduct.tipoCalculo) {
         //RequiereEntradaLargoAncho=1
         case 1:
+          this.form.get('cantidad').setValue(0);
           if (
             this.form.get('medidaBasica').value > 0 &&
             this.form.get('medidaOpuesta').value > 0 &&
@@ -302,6 +305,7 @@ export class SearchPage implements OnInit {
         //PrecioPorProducto
 
         case 2:
+          this.form.get('cantidad').setValue(0);
           if (this.form.get('cantidadSolicitada').value > 0) {
             this.recalculoPorRango();
           }
@@ -310,6 +314,7 @@ export class SearchPage implements OnInit {
 
         //PrecioPorProductoCantidad
         case 3:
+          this.form.get('cantidad').setValue(0);
           if (this.form.get('cantidadSolicitada').value > 0) {
             this.recalculoPrecioPorProductoCantidad();
           }
@@ -326,7 +331,14 @@ export class SearchPage implements OnInit {
           }
 
           break;
+        case 12:
+          this.form.get('cantidad').setValue(0);
+          if (this.form.get('cantidadSolicitada').value > 0) {
+            this.recalculoPrecioPorProductoCantidad();
+          }
+          break;
         case 5:
+          this.form.get('cantidad').setValue(0);
           if (this.form.get('cantidadSolicitada').value > 0) {
             this.recalculoPrecioPorProductoCantidadLargoRollo();
           }
@@ -348,7 +360,7 @@ export class SearchPage implements OnInit {
   calculaConversion(
     cantidadSolicitada: number,
     medidaBasica: number,
-    medidaOpuesta: number
+    medidaOpuesta: number,
   ): ResultConversionUnidadesMetrosCuadrados {
     if (!this.parametrosMaquinas.medidaBasicaRollo) {
       this.parametrosMaquinas = {
@@ -377,7 +389,7 @@ export class SearchPage implements OnInit {
       this.parametrosMaquinas.adicionalProduccion,
       this.parametrosMaquinas.adicionalProduccionOpuesta,
       this.parametrosMaquinas.medidaBasicaRollo,
-      this.parametrosMaquinas.medidaOpuestaRollo
+      this.parametrosMaquinas.medidaOpuestaRollo,
     );
 
     conversion.cantidadBase = cantidadSolicitada;
@@ -398,7 +410,7 @@ export class SearchPage implements OnInit {
       const calculoConversion = this.calculaConversion(
         this.form.get('cantidadSolicitada').value,
         this.form.get('medidaBasica').value,
-        this.form.get('medidaOpuesta').value
+        this.form.get('medidaOpuesta').value,
       );
 
       //let cantidadPorUnidad= calculoConversion.resulCantidad;
@@ -419,7 +431,7 @@ export class SearchPage implements OnInit {
       .get('cantidad')
       .setValue(
         this.form.get('cantidadSolicitada').value /
-          this.cantidadPorUnidadProduccion
+          this.cantidadPorUnidadProduccion,
       );
 
     if (this.itemMunicipioGetDto.porcFlete > 0) {
@@ -431,11 +443,11 @@ export class SearchPage implements OnInit {
     if (this.appPriceDto != null && this.appPriceDto.length > 0) {
       const precio = this.buscarPrecioPorRango(
         this.appPriceDto,
-        this.form.get('cantidad').value
+        this.form.get('cantidad').value,
       );
       const precioMaximo = this.buscarPrecioMaximoPorRango(
         this.appPriceDto,
-        this.form.get('cantidad').value
+        this.form.get('cantidad').value,
       );
       this.precioMaximoMasFlete = precioMaximo + this.flete;
       this.unitPriceBaseProduction = precio;
@@ -449,7 +461,7 @@ export class SearchPage implements OnInit {
     this.form
       .get('total')
       .setValue(
-        this.form.get('precio').value * this.form.get('cantidad').value
+        this.form.get('precio').value * this.form.get('cantidad').value,
       );
   }
 
@@ -467,7 +479,7 @@ export class SearchPage implements OnInit {
     this.mensaje = 'Buscando precio........';
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
-      this.form.get('cantidadSolicitada').value
+      this.form.get('cantidadSolicitada').value,
     );
 
     this.form.get('cantidad').setValue(cantidad);
@@ -476,11 +488,11 @@ export class SearchPage implements OnInit {
     this.valorConvertido = this.appProductConversionGetDto.yDenominador;
     const precio = this.buscarPrecioPorRango(
       this.appPriceDto,
-      this.form.get('cantidad').value
+      this.form.get('cantidad').value,
     );
     let precioMaximo = this.buscarPrecioMaximoPorRango(
       this.appPriceDto,
-      this.form.get('cantidad').value
+      this.form.get('cantidad').value,
     );
 
     this.unitPriceBaseProduction =
@@ -517,65 +529,47 @@ export class SearchPage implements OnInit {
     this.form
       .get('total')
       .setValue(
-        this.form.get('precio').value * this.form.get('cantidad').value
+        this.form.get('precio').value * this.form.get('cantidad').value,
       );
 
     this.mensaje = '';
   }
 
   async recalculoPrecioPorProductoCantidad() {
+    if (!this.validarParametrosCalculoPrecio(false)) {
+      return;
+    }
+
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
-      this.form.get('cantidadSolicitada').value
+      this.form.get('cantidadSolicitada').value,
     );
     this.form.get('cantidad').setValue(cantidad);
     this.cantidadPorUnidadProduccion = cantidad;
     this.valorConvertido = this.appProductConversionGetDto.yDenominador;
 
-    const filter = {
-      idMunicipio: this.form.get('idMunicipio').value,
-      appProuctId: this.appProduct.id,
-      cantidad: this.form.get('cantidadSolicitada').value,
-      unidadId: this.uiIdUnidad,
-      condicionDePago: this.form.get('condicionPago').value,
-    };
+    const filter = this.buildGetPricePayload(false);
+    console.log(
+      'payload getPrice - recalculoPrecioPorProductoCantidad',
+      filter,
+    );
 
     this.buscandoPrecio = true;
+    this.showLoading = true;
     this.mensaje = 'Buscando precio........';
-    await this.productoService
-      .buscaProductoCantidad(filter)
-      .subscribe((resp) => {
-        this.buscandoPrecio = false;
-        this.mensaje = '';
-        console.log('Respuesta desde GetPrice>>>>>>>>>>>>>>', resp);
-        const precio = resp.precio;
-        console.log('respuesta', resp);
-        this.calculoId = resp.calculoId;
-        this.unitPriceBaseProduction = precio;
-        let porcFlete = 0;
-        porcFlete = this.itemMunicipioGetDto.porcFlete;
-        if (this.appProduct.porcFlete > 0) {
-          porcFlete = this.appProduct.porcFlete;
-        }
-        this.flete = (this.unitPriceBaseProduction * porcFlete) / 100;
-
-        this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-        this.precioMaximoMasFlete = resp.precioMaximo + this.flete;
-        this.precioMasFlete = this.precioMasFlete.toFixed(2);
-        this.form.get('precio').setValue(this.precioMasFlete);
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value
-          );
-      });
+    await this.productoService.getPrice(filter).subscribe((resp) => {
+      this.buscandoPrecio = false;
+      this.showLoading = false;
+      this.mensaje = '';
+      this.aplicarResultadoGetPrice(resp, cantidad);
+    });
   }
 
   buscarPrecioPorRango(_appPriceDto: AppPriceDto[], cantidad: number): number {
     let result: number;
 
     const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta
+      (x) => cantidad >= x.desde && cantidad <= x.hasta,
     );
 
     if (precio != null && precio.length > 0) {
@@ -588,12 +582,12 @@ export class SearchPage implements OnInit {
   }
   buscarPrecioMaximoPorRango(
     _appPriceDto: AppPriceDto[],
-    cantidad: number
+    cantidad: number,
   ): number {
     let result: number;
 
     const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta
+      (x) => cantidad >= x.desde && cantidad <= x.hasta,
     );
 
     if (precio != null && precio.length > 0) {
@@ -606,12 +600,12 @@ export class SearchPage implements OnInit {
   }
   calculoConversionGenerico(
     appProductConversionGetDto: AppProductConversionGetDto,
-    cantidad: number
+    cantidad: number,
   ): number {
     const conversion = new Conversion(
       appProductConversionGetDto.xNumerador,
       appProductConversionGetDto.yDenominador,
-      cantidad
+      cantidad,
     );
     const result = conversion.getCantidadAlternativa();
 
@@ -623,90 +617,197 @@ export class SearchPage implements OnInit {
   }
 
   async recalculoPrecioPorProductoCantidadLargoAncho() {
+    if (!this.validarParametrosCalculoPrecio(true)) {
+      return;
+    }
+
     this.form.get('cantidad').setValue(0);
-    const filter = {
-      idMunicipio: this.form.get('idMunicipio').value,
-      appProuctId: this.appProduct.id,
-      cantidad: this.form.get('cantidadSolicitada').value,
-      largo: this.form.get('medidaBasica').value,
-      ancho: this.form.get('medidaOpuesta').value,
-      unidadId: this.uiIdUnidad,
-      condicionDePago: this.form.get('condicionPago').value,
-    };
+    const filter = this.buildGetPricePayload(true);
+    console.log(
+      'payload getPrice - recalculoPrecioPorProductoCantidadLargoAncho',
+      filter,
+    );
     console.log(
       'filter buscando precio....####### en recalculoPrecioPorProductoCantidadLargoAncho',
-      filter
+      filter,
     );
     this.buscandoPrecio = true;
+    this.showLoading = true;
     this.mensaje = 'Buscando precio.';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
+      this.showLoading = false;
       this.mensaje = '';
       console.log('Respuesta desde GetPrice', resp);
-
-      const precio = resp.data.precio;
-      this.calculoId = resp.data.calculoId;
-      this.unitPriceBaseProduction = precio;
-      this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
-
-      if (this.itemMunicipioGetDto.porcFlete > 0) {
-        this.flete =
-          (this.unitPriceBaseProduction * this.itemMunicipioGetDto.porcFlete) /
-          100;
-      }
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMaximoMasFlete = resp.data.precioMaximo + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
-      this.form.get('precio').setValue(this.precioMasFlete);
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
-        );
+      this.aplicarResultadoGetPrice(resp);
     });
   }
 
   async recalculoPrecioPorProductoCantidadLargoRollo() {
+    if (!this.validarParametrosCalculoPrecio(false)) {
+      return;
+    }
+
     this.form.get('cantidad').setValue(0);
     //const cantidad= this.calculoConversionGenerico(this.appProductConversionGetDto,this.form.get('cantidadSolicitada').value);
     //this.form.get('cantidad').setValue(cantidad);
     //this.cantidadPorUnidadProduccion=cantidad;
     //this.valorConvertido=this.appProductConversionGetDto.yDenominador;
-    const filter = {
-      idMunicipio: this.form.get('idMunicipio').value,
-      appProuctId: this.appProduct.id,
-      cantidad: this.form.get('cantidadSolicitada').value,
-      unidadId: this.uiIdUnidad,
-      condicionDePago: this.form.get('condicionPago').value,
-    };
+    const filter = this.buildGetPricePayload(false);
+    console.log(
+      'payload getPrice - recalculoPrecioPorProductoCantidadLargoRollo',
+      filter,
+    );
     console.log('filter buscando precio rollo', filter);
     this.buscandoPrecio = true;
+    this.showLoading = true;
     this.mensaje = 'Buscando precio........';
     await this.productoService.getPrice(filter).subscribe((resp) => {
       this.buscandoPrecio = false;
+      this.showLoading = false;
       this.mensaje = '';
       console.log('Respuesta desde GetPrice', resp);
-
-      const precio = resp.data.precio;
-      this.calculoId = resp.data.calculoId;
-      this.unitPriceBaseProduction = precio;
-      this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
-
-      if (this.itemMunicipioGetDto.porcFlete > 0) {
-        this.flete =
-          (this.unitPriceBaseProduction * this.itemMunicipioGetDto.porcFlete) /
-          100;
-      }
-      this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      this.precioMaximoMasFlete = resp.data.precioMaximo + this.flete;
-      this.precioMasFlete = this.precioMasFlete.toFixed(2);
-      this.form.get('precio').setValue(this.precioMasFlete);
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value
-        );
+      this.aplicarResultadoGetPrice(resp);
     });
+  }
+
+  private aplicarResultadoGetPrice(resp: any, cantidadFallback?: number) {
+    const mensajeApi = this.obtenerMensajeApi(resp);
+
+    if (!resp || !resp.data) {
+      this.form.get('cantidad').setValue(cantidadFallback ?? 0);
+      this.form.get('precio').setValue(0);
+      this.form.get('total').setValue(0);
+      this.mensaje = mensajeApi || 'No fue posible calcular el precio';
+      return;
+    }
+
+    const data = resp.data;
+
+    this.calculoId = data.calculoId ?? 0;
+    this.unitPriceBaseProduction = data.precio ?? 0;
+    this.flete = data.flete ?? 0;
+    this.precioMasFlete =
+      data.precioMasFlete ?? this.unitPriceBaseProduction + this.flete;
+    this.precioMaximoMasFlete =
+      data.precioMaximoMasFlete ?? (data.precioMaximo ?? 0) + this.flete;
+
+    const cantidadConvertida = data.cantidadConvertida ?? cantidadFallback ?? 0;
+    this.form.get('cantidad').setValue(cantidadConvertida);
+    this.precioMasFlete = Number(this.precioMasFlete).toFixed(2);
+    this.form.get('precio').setValue(this.precioMasFlete);
+    this.form
+      .get('total')
+      .setValue(
+        this.form.get('precio').value * this.form.get('cantidad').value,
+      );
+    this.mensaje = '';
+  }
+
+  private getUnidadIdSeleccionada(): number {
+    const unidadId =
+      this.uiIdUnidad ||
+      this.form.get('unidadId').value ||
+      this.appProductConversionGetDto?.appUnitsIdAlternativa ||
+      0;
+    return Number(unidadId);
+  }
+
+  private buildGetPricePayload(requiereMedidas: boolean): GetPriceQueryFilter {
+    const unidadId = this.getUnidadIdSeleccionada();
+    const largo = requiereMedidas
+      ? Number(this.form.get('medidaBasica').value || 0)
+      : 0;
+    const ancho = requiereMedidas
+      ? Number(this.form.get('medidaOpuesta').value || 0)
+      : 0;
+
+    return {
+      idMunicipio: Number(this.form.get('idMunicipio').value || 0),
+      appProuctId: this.appProduct.id,
+      cantidad: Number(this.form.get('cantidadSolicitada').value || 0),
+      largo,
+      ancho,
+      unidadId,
+      unidad: unidadId,
+      condicionDePago: Number(this.form.get('condicionPago').value || 0),
+    };
+  }
+
+  private obtenerMensajeApi(resp: any): string {
+    if (!resp) {
+      return '';
+    }
+    if (resp.meta?.message) {
+      return resp.meta.message;
+    }
+    if (resp.message) {
+      return resp.message;
+    }
+    if (resp.error?.message) {
+      return resp.error.message;
+    }
+    return '';
+  }
+
+  private validarParametrosCalculoPrecio(requiereMedidas: boolean): boolean {
+    const idMunicipio = Number(this.form.get('idMunicipio').value || 0);
+    const condicionDePago = Number(this.form.get('condicionPago').value || 0);
+    const cantidadSolicitada = Number(
+      this.form.get('cantidadSolicitada').value || 0,
+    );
+    const unidadId = this.getUnidadIdSeleccionada();
+    const medidaBasica = Number(this.form.get('medidaBasica').value || 0);
+    const medidaOpuesta = Number(this.form.get('medidaOpuesta').value || 0);
+
+    if (!this.appProduct) {
+      this.mensaje = 'Seleccione un producto';
+      this.generalService.presentToast('Seleccione un producto', 'warning');
+      return false;
+    }
+    if (idMunicipio <= 0) {
+      this.mensaje = 'Seleccione municipio para calcular precio';
+      this.generalService.presentToast(
+        'Seleccione municipio para calcular precio',
+        'warning',
+      );
+      return false;
+    }
+    if (condicionDePago <= 0) {
+      this.mensaje = 'Seleccione condición de pago';
+      this.generalService.presentToast(
+        'Seleccione condición de pago',
+        'warning',
+      );
+      return false;
+    }
+    if (unidadId <= 0) {
+      this.mensaje = 'Seleccione unidad para calcular precio';
+      this.generalService.presentToast(
+        'Seleccione unidad para calcular precio',
+        'warning',
+      );
+      return false;
+    }
+    if (cantidadSolicitada <= 0) {
+      this.mensaje = 'Indique una cantidad solicitada mayor a cero';
+      this.generalService.presentToast(
+        'Indique una cantidad solicitada mayor a cero',
+        'warning',
+      );
+      return false;
+    }
+    if (requiereMedidas && (medidaBasica <= 0 || medidaOpuesta <= 0)) {
+      this.mensaje = 'Indique medida básica y opuesta mayores a cero';
+      this.generalService.presentToast(
+        'Indique medida básica y opuesta mayores a cero',
+        'warning',
+      );
+      return false;
+    }
+
+    this.mensaje = '';
+    return true;
   }
 
   async onBuscarUnidad() {

@@ -52,5 +52,7 @@ export class CobGeneralCobranzaDto {
     fechaTransaccionIso: string;
 
     linkRecibo: string;
+    observacionVendedor: string;
+    observacionCobranzas: string;
 
 }

@@ -70,7 +70,7 @@ export class GeneralService {
 
     const usuario = this.GetUsuario();
 
-    if (!usuario) {
+    if (!usuario || !usuario.user) {
       return this.basePath;
     }
 
@@ -108,7 +108,13 @@ export class GeneralService {
   }
 
   compareIgnoreCase(str1, str2) {
-    return str1.toUpperCase() === str2.toUpperCase();
+    if (str1 === null || str1 === undefined) {
+      return false;
+    }
+    if (str2 === null || str2 === undefined) {
+      return false;
+    }
+    return str1.toString().toUpperCase() === str2.toString().toUpperCase();
   }
   // Establace valores individualmente en localstorage
   SetItem(clave: string, valor: any): void {
@@ -163,8 +169,14 @@ export class GeneralService {
   getVendedor(codigo: string): any {
     const datos = this.obtenerDatosVendedores();
     console.log('lista de vendedores en getvendedores', datos);
+    if (!codigo) {
+      return null;
+    }
     return datos.find(
-      (item: any) => item.codigo.toUpperCase() === codigo.toUpperCase(),
+      (item: any) =>
+        item &&
+        item.codigo &&
+        item.codigo.toUpperCase() === codigo.toUpperCase(),
     );
   }
 

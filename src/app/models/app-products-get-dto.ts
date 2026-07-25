@@ -31,8 +31,10 @@ export class AppProductsGetDto {
   cantidadMinima: number;
   validadCantidadFija: boolean;
   cantidadFija: number;
+  aceptaMultiplesItem: boolean;
   tipoCalculo?: number;
   conversiones: AppProductConversionGetDto[];
   requiereEstimacion: boolean;
   porcFlete: number;
+  usdEstimado: number;
 }

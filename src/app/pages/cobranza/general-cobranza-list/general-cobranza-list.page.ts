@@ -618,6 +618,14 @@ export class GeneralCobranzaListPage implements OnInit {
           header: 'Acciones...',
           buttons: [
 
+            {
+              text: 'Ver / Agregar información',
+              icon: 'create-outline',
+              handler: () => {
+                this.onClickDetail(item);
+              }
+            },
+
 
             {
               text: 'Adjuntos',

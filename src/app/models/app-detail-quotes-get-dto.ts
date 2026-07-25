@@ -4,11 +4,14 @@ import { AppUnitsGetDto } from './app-units-get-dto';
 import { AppTemplateConversionUnitGetDto } from './app-template-conversion-unit-get-dto';
 import { StatusAprobacionDto } from './app-status-aprobacion-dto';
 import { AppProductConversionGetDto } from './app-product-conversion-get-dto';
+import { AppSolicitudAprobacion } from './app-solicitud-aprobacion.model';
 
 export class AppDetailQuotesGetDto {
   id: number;
   appGeneralQuotesId: number;
   cotizacion: string;
+  renglon: number;
+  propuesta: number;
   producto: string;
   idProducto: number;
   nombreComercialProducto: string;
@@ -34,9 +37,12 @@ export class AppDetailQuotesGetDto {
   appUnitsGetDto: AppUnitsGetDto;
   quantityPerPackage: number;
   obsSolicitud: string;
+  obsSolicitudSobreprecio: string;
   cantidadPorUnidadProduccion: number;
   appTemplateConversionUnitGetDto: AppTemplateConversionUnitGetDto[] = [];
   statusAprobacionDto: StatusAprobacionDto;
+  statusAprobacionSobreprecioDto: StatusAprobacionDto;
+  appSolicitudAprobacionDto: AppSolicitudAprobacion;
   medidaBasica: string;
   medidaOpuesta: string;
   ordenAnterior: number;
@@ -51,4 +57,7 @@ export class AppDetailQuotesGetDto {
   solicitarPrecio: boolean;
   mensajeSolicitarPrecio: string;
   estimada: boolean;
+  precioMaximo: number;
+  fleteMaximo: number;
+  porcMaximoSobrePrecio: number;
 }

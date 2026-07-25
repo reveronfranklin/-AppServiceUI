@@ -1,29 +1,24 @@
-import { AppConfigAppQueryFilter } from './../../../../interfaces/appConfigAppQueryFilter';
-import { ModalController, AlertController } from '@ionic/angular';
-import { Component, OnInit, Input } from '@angular/core';
+import { AlertController, ModalController } from '@ionic/angular';
+import { Component, OnDestroy, OnInit, Input } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { GeneralService } from 'src/app/services/general.service';
 import { Validators, FormGroup, FormBuilder } from '@angular/forms';
-import { IUsuario } from 'src/app/interfaces/iusuario';
 
 import { CotizacionesListService } from '../../../../services/cotizaciones/cotizaciones-list.service';
-import { ConfiguracionService } from '../../../../services/configuracion.service';
 import { AppGeneralQuotesGetDto } from '../../../../models/app-general-quotes-get-dto';
 
 import { AppDetailQuotesGetDto } from 'src/app/models/app-detail-quotes-get-dto';
+import { AppDetailQuotesDeleteDto } from 'src/app/models/app-detail-quotes-delete-dto';
 import { AppDetailQuotesCreateDto } from '../../../../models/app-detail-quotes-create-dto';
 import { AppDetailQuotesUpdateDto } from '../../../../models/app-detail-quotes-update-dto';
 
 import { BuscadorUnidadesPage } from '../buscador-unidades/buscador-unidades.page';
 
-import { Observable, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { TasaPreferencialService } from '../../../../services/tasa-preferencial.service';
-
-import { SharedModule } from '../../../../shared/shared.module';
 
 import { AppConversionUnitGenericCreateDto } from '../../../../models/app-conversion-unit-generic-create-dto';
 
-import { gte } from '../validator/detail-validator';
 import { AppSubcategoryGetDto } from '../../../../models/app-subcategory-get-dto';
 import { ProductoService } from '../../../../services/producto.service';
 import { BuscadorProductosComponent } from '../../../../components/buscador-productos/buscador-productos.component';
@@ -33,9 +28,7 @@ import {
   Conversion,
   ConversionUnidadesMetrosCuadrados,
 } from 'src/app/models/conversion';
-import { AppPriceDto } from 'src/app/models/app-price-dto';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { AppRecipesByAppDetailQuotesQueryFilter } from 'src/app/interfaces/precio-producto-cantidad-filter';
+import { debounceTime, finalize, takeUntil } from 'rxjs/operators';
 import { AppProductsGetDto } from 'src/app/models/app-products-get-dto';
 import { ResultConversionUnidadesMetrosCuadrados } from 'src/app/models/result-conversion-unidades-metros-cuadrados-dto';
 import { AppProductConversionGetDto } from 'src/app/models/app-product-conversion-get-dto';
@@ -45,23 +38,40 @@ import { CondicionPagoQueryFilter } from 'src/app/interfaces/condicion-pago-quer
 import { CondicionPagoDto } from 'src/app/models/CondicionPagoDto';
 import { PrecioDto } from 'src/app/interfaces/precio';
 import { BuscadorProductosPage } from '../buscador-productos/buscador-productos.page';
+import { AppSolicitudAprobacionService } from 'src/app/services/app-solicitud-aprobacion.service';
+import {
+  CotizacionDetalleBusinessRulesService,
+  ParametrosAprobacionPrecio,
+  ResultadoAprobacionPrecio,
+} from 'src/app/services/cotizacion-detalle-business-rules.service';
+import { PrecioMasFleteStorageService } from 'src/app/services/precio-mas-flete-storage.service';
+import { DocumentacionFuncionalDetalleCotizacionComponent } from './documentacion-funcional-detalle-cotizacion/documentacion-funcional-detalle-cotizacion.component';
+import { AppSolicitudAprobacion } from 'src/app/models/app-solicitud-aprobacion.model';
+
+interface DetalleCotizacionListItem extends AppDetailQuotesGetDto {
+  precioBaseConFlete: number;
+  porcentajeSobreprecio: number;
+  puedeEnviarAprobacionPorSobreprecio: boolean;
+  mostrarStatusAprobacionPrecio: boolean;
+  statusAprobacionColor: string;
+  statusSobreprecioTexto: string;
+  statusSobreprecioColor: string;
+}
 
 @Component({
   selector: 'app-edit',
   templateUrl: './edit.page.html',
   styleUrls: ['./edit.page.scss'],
 })
-export class EditPage implements OnInit {
+export class EditPage implements OnInit, OnDestroy {
   @Input() cotizacion: AppGeneralQuotesGetDto;
   public item: AppDetailQuotesGetDto;
+  public detalleItems: DetalleCotizacionListItem[] = [];
+  public detalleSeleccionadoId: number;
 
-  //observable
-  cotizacion$: Observable<any>;
-  tasa$: Observable<any>;
   operacion: number;
 
   public editable: boolean;
-  usuario: IUsuario;
   form: FormGroup;
   tituloUi: any;
 
@@ -70,11 +80,12 @@ export class EditPage implements OnInit {
   public isDolar: boolean;
   public btnUmDisabled: boolean;
   public btnCalculadoraDisabled: boolean;
-  public _cantidad: any = '0';
   public tasa: number;
   public flagMascara: boolean;
   public calculadoraEnabled: boolean;
   public precioMaximo: number;
+  public fleteMaximo: number;
+  public porcMaximoSobrePrecio: number;
   public concesion: number;
   public concesionString: string;
   salidas: string[];
@@ -84,19 +95,10 @@ export class EditPage implements OnInit {
   requiereAprobacionPrecio: boolean;
 
   solicitarPrecio: boolean;
-  currency: number;
 
   ultimoPrecioUsd: number;
 
-  _precio: any = '0';
-  _precioUsd: any = '0';
-
-  _total: any = '0';
-  _totalUsd: any = '0';
-
-  datoHijo: any = 'No iniciado';
   appSubcategoryGetDto: AppSubcategoryGetDto[] = [];
-  appPriceDto: AppPriceDto[] = [];
   condicionPagoQueryFilter: CondicionPagoQueryFilter;
   condicionPagoDto: CondicionPagoDto;
   listCondicionPagoDto: CondicionPagoDto[] = [];
@@ -153,21 +155,16 @@ export class EditPage implements OnInit {
   public precio: number;
   public calculoId: number;
   public mostarOrdenAnterior: boolean;
-  public subcategorySelectIsEnabled: boolean;
   public appProduct: AppProductsGetDto = new AppProductsGetDto();
 
   private parametrosMaquinas: ParametrosMaquinas = new ParametrosMaquinas();
   private appGeneralQuotesGetDto: AppGeneralQuotesGetDto =
     new AppGeneralQuotesGetDto();
-  private detailCreateDto: AppDetailQuotesCreateDto =
-    new AppDetailQuotesCreateDto();
-  private detailUpdateDto: AppDetailQuotesUpdateDto =
-    new AppDetailQuotesUpdateDto();
   private dtoCalculadora: AppConversionUnitGenericCreateDto =
     new AppConversionUnitGenericCreateDto();
   private appProductConversionGetDto: AppProductConversionGetDto;
-  private appConfigAppQueryFilter: AppConfigAppQueryFilter;
   private subjectKeyUp = new Subject<any>();
+  private destroy$ = new Subject<void>();
 
   constructor(
     private formBuilder: FormBuilder,
@@ -180,7 +177,9 @@ export class EditPage implements OnInit {
     private cotizacionesService: CotizacionesListService,
     private productoService: ProductoService,
     private condicionesPago: CondicionesPagoService,
-    private configuracionService: ConfiguracionService,
+    private solicitudAprobacionService: AppSolicitudAprobacionService,
+    private detalleBusinessRules: CotizacionDetalleBusinessRulesService,
+    private precioMasFleteStorage: PrecioMasFleteStorageService,
   ) {
     this.parametrosMaquinas = JSON.parse(
       localStorage.getItem('parametrosMaquinas'),
@@ -188,21 +187,32 @@ export class EditPage implements OnInit {
     this.buildForm();
   }
 
-  async ngOnInit() {
+  ngOnInit() {
     //suscribe al observable cotizacion$
-    this.cotizacionesListService.cotizacion$.subscribe((cot) => {
-      this.cotizacion = cot;
-    });
+    this.cotizacionesListService.cotizacion$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((cot) => {
+        if (cot) {
+          this.aplicarCotizacionEnPantalla(cot);
+          if (!this.item) {
+            this.inicializarDetalleActivo({});
+          }
+        }
+      });
 
     this.salidas = ['A', 'B', 'C', 'D'];
     this.tipoForma = ['Regular', 'Irregular'];
     this.mostrarEnDesarrollo = true;
-    this.subjectKeyUp.pipe(debounceTime(1000)).subscribe((d) => {
-      this.onRecalcular(d);
-    });
+    this.subjectKeyUp
+      .pipe(debounceTime(1000), takeUntil(this.destroy$))
+      .subscribe((d) => {
+        this.onRecalcular(d);
+      });
 
-    //datos recibidos
-    this.operacion = this.router.getCurrentNavigation().extras.state.operacion;
+    const navState = this.router.getCurrentNavigation()?.extras?.state || {};
+    if (navState.cotizacion) {
+      this.aplicarCotizacionEnPantalla(navState.cotizacion);
+    }
 
     this.uiId = 0;
     this.uiIdProducto = 0;
@@ -221,6 +231,7 @@ export class EditPage implements OnInit {
     };
     this.condicionesPago
       .GetAllCondicionPago(this.condicionPagoQueryFilter)
+      .pipe(takeUntil(this.destroy$))
       .subscribe((resp) => {
         this.listCondicionPagoDto = resp.data;
       });
@@ -233,34 +244,11 @@ export class EditPage implements OnInit {
 
     this.requiereDatosEntrada = false;
 
-    if (this.cotizacion) {
-      this.editable = this.cotizacion.appStatusQuoteGetDto.editable;
-    } else {
-      this.editable = true;
-    }
+    this.editable = this.cotizacion?.appStatusQuoteGetDto?.editable ?? true;
 
-    if (this.operacion === 0) {
-      this.calculoId = 0;
-      //Modo Crear
-      this.item = new AppDetailQuotesGetDto();
-      this.item.statusAprobacionDto = {
-        flagAprobado: true,
-        flagCerrado: false,
-        valorVentaAprobar: 0,
-        valorVentaAprobarUsd: 0,
-        aprobado: true,
-        color: 'prymary',
-        statusString: 'APROBADO',
-        precioEstimacion: 0,
-      };
-    }
+    this.inicializarDetalleActivo(navState);
 
-    //boton calculadora`
     if (this.operacion === 1) {
-      //Modo Editar
-      this.item = this.router.getCurrentNavigation().extras.state.item;
-      console.log('this.item recibido', this.item);
-
       //this.item.appProductsGetDto =this.router.getCurrentNavigation().extras.state.producto;
 
       this.appProduct = this.item.appProductsGetDto;
@@ -272,17 +260,23 @@ export class EditPage implements OnInit {
       this.setColorToolbar();
     }
     //suscribe al observable tasa$
-    this.tasaPreferencialService.tasa$.subscribe((_tasa) => {
-      this.tasa = _tasa;
-    });
+    this.tasaPreferencialService.tasa$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((_tasa) => {
+        this.tasa = _tasa;
+        this.uiTasa = _tasa;
+      });
 
-    await this.tasaPreferencialService.GetTasa().subscribe((resp) => {
-      this.tasaPreferencialService.tasa$.next(resp.data.tasa);
+    this.tasaPreferencialService
+      .GetTasa()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((resp) => {
+        this.tasaPreferencialService.tasa$.next(resp.data.tasa);
 
-      this.tasa = resp.data.tasa;
+        this.tasa = resp.data.tasa;
 
-      this.uiTasa = this.tasa;
-    });
+        this.uiTasa = this.tasa;
+      });
 
     this.showData();
     this.setMostrarOrdenAnterior();
@@ -291,18 +285,336 @@ export class EditPage implements OnInit {
   }
 
   ionViewDidEnter() {
-    this.cotizacionesListService.cotizacion$.subscribe((cot) => {
-      this.cotizacion = cot;
+    if (this.item) {
+      this.showData();
+      this.setMostrarOrdenAnterior();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  async mostrarDocumentacionFuncional() {
+    const modal = await this.modalCtrl.create({
+      component: DocumentacionFuncionalDetalleCotizacionComponent,
+      cssClass: 'documentacion-funcional-modal',
     });
 
-    this.showData();
+    await modal.present();
+  }
+
+  private aplicarCotizacionEnPantalla(cotizacion: AppGeneralQuotesGetDto): void {
+    this.cotizacion = cotizacion;
+    this.appGeneralQuotesGetDto = cotizacion;
+    this.detalleItems = (cotizacion?.appDetailQuotesGetDto || []).map((item) =>
+      this.mapDetalleItem(item),
+    );
+  }
+
+  private inicializarDetalleActivo(navState: any): void {
+    const itemRecibido = navState?.item as AppDetailQuotesGetDto;
+    const primerDetalle = this.detalleItems[0];
+
+    if (itemRecibido?.id) {
+      this.cargarDetalleEnFormulario(itemRecibido);
+      return;
+    }
+
+    if (primerDetalle?.id) {
+      this.cargarDetalleEnFormulario(primerDetalle);
+      return;
+    }
+
+    this.nuevoProducto();
+  }
+
+  private mapDetalleItem(
+    item: AppDetailQuotesGetDto,
+  ): DetalleCotizacionListItem {
+    const precioBaseConFlete = this.calcularPrecioBaseConFlete(item);
+    const porcentajeSobreprecio =
+      this.detalleBusinessRules.calcularPorcentajeSobreprecio(
+        precioBaseConFlete,
+        Number(item?.precioUsd || 0),
+      );
+
+    return Object.assign(item, {
+      precioBaseConFlete,
+      porcentajeSobreprecio,
+      puedeEnviarAprobacionPorSobreprecio:
+        this.detalleBusinessRules.puedeEnviarAprobacionPorSobreprecio(
+          precioBaseConFlete,
+          Number(item?.precioUsd || 0),
+          Number(item?.porcMaximoSobrePrecio || 0),
+        ),
+      statusAprobacionColor:
+        this.detalleBusinessRules.getColorEstatusAprobacion(
+          item?.statusAprobacionDto?.statusString,
+        ),
+      mostrarStatusAprobacionPrecio:
+        this.debeMostrarStatusAprobacionPrecio(item),
+      statusSobreprecioTexto: this.getEstadoSolicitudSobreprecio(
+        item?.appSolicitudAprobacionDto,
+      ),
+      statusSobreprecioColor: this.getColorSolicitudSobreprecio(
+        item?.appSolicitudAprobacionDto,
+      ),
+    });
+  }
+
+  private debeMostrarStatusAprobacionPrecio(
+    item: AppDetailQuotesGetDto,
+  ): boolean {
+    const statusString = item?.statusAprobacionDto?.statusString || '';
+
+    if (!statusString) {
+      return false;
+    }
+
+    return (
+      item?.solicitarPrecio === true ||
+      item?.estimada === true ||
+      item?.appProductsGetDto?.requiereEstimacion === true
+    );
+  }
+
+  private calcularPrecioBaseConFlete(item: AppDetailQuotesGetDto): number {
+    const precioBase = Number(
+      item?.unitPriceBaseProduction || item?.precioUsd || 0,
+    );
+    const porcFlete =
+      Number(item?.porcFlete || 0) > 0
+        ? Number(item.porcFlete)
+        : Number(this.cotizacion?.porcFlete || 0);
+
+    return this.detalleBusinessRules.calcularPrecioConFlete({
+      precioBase,
+      porcFlete,
+    });
+  }
+
+  private getDetallesParaValidarAdicionar(): AppDetailQuotesGetDto[] {
+    const detalles = [
+      ...(this.detalleItems || []),
+      ...(this.cotizacion?.appDetailQuotesGetDto || []),
+    ].filter((detalle) => !!detalle && Number(detalle?.id || 0) > 0);
+
+    const keys = new Set<string>();
+
+    return detalles.filter((detalle) => {
+      const key = `${detalle?.id || 0}|${detalle?.producto || ''}|${
+        detalle?.idProducto || 0
+      }`;
+
+      if (keys.has(key)) {
+        return false;
+      }
+
+      keys.add(key);
+      return true;
+    });
+  }
+
+  private getPermiteAdicionarDetalle(): boolean {
+    const detalles = this.getDetallesParaValidarAdicionar();
+
+    if (detalles.length === 0) {
+      return true;
+    }
+
+    const permisosProducto = [
+      ...detalles.map((detalle) =>
+        this.getAceptaMultiplesItem(detalle?.appProductsGetDto),
+      ),
+    ].filter((permite) => permite !== null);
+
+    if (permisosProducto.some((permite) => permite === false)) {
+      return false;
+    }
+
+    if (permisosProducto.some((permite) => permite === true)) {
+      return true;
+    }
+
+    return this.cotizacion?.permiteAdicionarDetalle === true;
+  }
+
+  private getAceptaMultiplesItem(producto: any): boolean | null {
+    if (!producto) {
+      return null;
+    }
+
+    const value =
+      producto.aceptaMultiplesItem ??
+      producto.AceptaMultiplesItem ??
+      producto.aceptaMultiplesitem;
+
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+
+      if (normalized === 'true') {
+        return true;
+      }
+
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+
+    return null;
+  }
+
+  getMaximoItemsProducto(): number {
+    return this.detalleBusinessRules.maximoItemsProducto;
+  }
+
+  puedeAgregarProducto(): boolean {
+    return this.detalleBusinessRules.puedeAgregarProducto(
+      this.detalleItems?.length || 0,
+    );
+  }
+
+  puedeAdicionarNuevoDetalle(): boolean {
+    return this.detalleBusinessRules.puedeAdicionarDetalle({
+      cantidadItems: this.detalleItems?.length || 0,
+      permiteAdicionarDetalle: this.getPermiteAdicionarDetalle(),
+    });
+  }
+
+  getMensajeAdicionarDetalle(): string {
+    return (
+      this.detalleBusinessRules.validarAdicionarDetalle({
+        cantidadItems: this.detalleItems?.length || 0,
+        permiteAdicionarDetalle: this.getPermiteAdicionarDetalle(),
+      }) || 'Nuevo producto'
+    );
+  }
+
+  private validarAdicionarDetalle(): boolean {
+    const mensaje =
+      this.detalleBusinessRules.validarAdicionarDetalle({
+        cantidadItems: this.detalleItems?.length || 0,
+        permiteAdicionarDetalle: this.getPermiteAdicionarDetalle(),
+      });
+
+    if (!mensaje) {
+      return true;
+    }
+
+    this.generalService.presentToast(mensaje, 'warning');
+    return false;
+  }
+
+  private limpiarEstadoFormularioCreacion(): void {
+    this.appProduct = new AppProductsGetDto();
+    this.appProductConversionGetDto = null;
+    this.requiereDatosEntrada = false;
+    this.decripcionProductionUnit = '';
+    this.descripcionSalesUnit = '';
+    this.uiImageLink = '';
+    this.uiNombreProductoInCard = '?';
+    this.uiIdProducto = 0;
+    this.uiIdUnidad = 0;
+    this.ultimoPrecioUsd = 0;
+    this.precio = 0;
+    this.precioPorUnidad = 0;
+    this.cantidadPorUnidad = 0;
+    this.cantidadPorUnidadProduccion = 0;
+    this.mensaje = '';
+    this.concesion = 0;
+    this.concesionString = '';
+    this.resetPrecioMasFlete();
+    this.resetEstadoAprobacionPrecio();
+  }
+
+  nuevoProducto(limpiarOrdenAnterior = false): void {
+    if (!limpiarOrdenAnterior && !this.puedeAdicionarNuevoDetalle()) {
+      this.validarAdicionarDetalle();
+      return;
+    }
+
+    if (limpiarOrdenAnterior) {
+      this.limpiarOrdenAnteriorCotizacionSinDetalles();
+    }
+
+    this.operacion = 0;
+    this.detalleSeleccionadoId = 0;
+    this.calculoId = 0;
+    this.item = new AppDetailQuotesGetDto();
+    this.item.statusAprobacionDto =
+      this.detalleBusinessRules.crearEstadoAprobadoInicial();
+    this.limpiarEstadoFormularioCreacion();
+    this.form.reset({
+      producto: '',
+      nombreComercialProducto: '',
+      unidad: '',
+      cantidad: 0,
+      precio: 0,
+      total: '',
+      precioUsd: 0,
+      totalUsd: '',
+      diasEntrega: 0,
+      observaciones: '',
+      obsSolicitud: '',
+      obsSolicitudSobreprecio: '',
+      cantidadSolicitada: 0,
+      condicionPago: this.cotizacion?.idCondPago || 40,
+      subCategoriaId: '',
+      descripcionProducto: '',
+      medidaBasica: '',
+      medidaOpuesta: '',
+      ordenAnterior: limpiarOrdenAnterior ? 0 : this.cotizacion?.ordenAnterior || '',
+      cantidadConvertidaAlternativa: 0,
+      forma: '',
+      salida: '',
+      presentacion: '',
+      mensajeSolicitarPrecio: '',
+      estimada: false,
+    });
+    this.configuraCreateOrEdit();
     this.setMostrarOrdenAnterior();
   }
+
+  private limpiarOrdenAnteriorCotizacionSinDetalles(): void {
+    if (this.cotizacion) {
+      this.cotizacion = {
+        ...this.cotizacion,
+        ordenAnterior: 0,
+        appDetailQuotesGetDto: [],
+      };
+    }
+
+    if (this.appGeneralQuotesGetDto) {
+      this.appGeneralQuotesGetDto = {
+        ...this.appGeneralQuotesGetDto,
+        ordenAnterior: 0,
+        appDetailQuotesGetDto: [],
+      };
+    }
+  }
+
+  cargarDetalleEnFormulario(item: AppDetailQuotesGetDto): void {
+    this.operacion = 1;
+    this.item = item;
+    this.detalleSeleccionadoId = item.id;
+    this.appProduct = item.appProductsGetDto;
+    this.calculoId = item.calculoId;
+    this.configuraCreateOrEdit();
+    this.setColorToolbar();
+    this.setMostrarOrdenAnterior();
+  }
+
   onChangeCondicionPago(event) {
+    this.condicionPagoCodigo = event.target.value;
     this.condicionPagoDto = this.listCondicionPagoDto.find(
       (x) => x.codigo === this.condicionPagoCodigo,
     );
-    this.condicionPagoCodigo = event.target.value;
 
     this.form.get('condicionPago').setValue(event.target.value);
     this.subjectKeyUp.next('onChangeCondicionPago');
@@ -321,6 +633,17 @@ export class EditPage implements OnInit {
   }
 
   onChangeSubCategoriaId(event) {
+    if (this.operacion === 1) {
+      this.form
+        .get('subCategoriaId')
+        .setValue(this.item?.appProductsGetDto?.appSubCategoryId || '');
+      this.generalService.presentToast(
+        'Para cambiar el producto, elimine este ítem y agregue uno nuevo.',
+        'warning',
+      );
+      return;
+    }
+
     //Establezco ID de sub-categoria
     this.subCategoryid = event.detail.value;
     this.form.get('subCategoriaId').setValue(this.subCategoryid);
@@ -339,13 +662,6 @@ export class EditPage implements OnInit {
     this.uiIdUnidad = 0;
   }
 
-  onChangeSalida(event) {
-    console.log('onChangeSalida', event.target.value);
-  }
-  onChangeTipoForma(event) {
-    console.log('onChangeSalida', event.target.value);
-  }
-
   configuraCreateOrEdit() {
     //datos recibidos
     //this.operacion = this.router.getCurrentNavigation().extras.state.operacion;
@@ -356,7 +672,7 @@ export class EditPage implements OnInit {
     this.uiUsuarioConectado = '';
     this.uiUnitPriceConverted = 0;
     this.unitPriceBaseProduction = 0;
-    this.uiTasa = 0;
+    this.uiTasa = this.tasa || this.uiTasa || 0;
     this.flete = 0;
     this.newPrecioMasFlete = 0;
 
@@ -379,16 +695,8 @@ export class EditPage implements OnInit {
       this.item.precioUsd = 0;
       this.item.total = 0;
       this.item.totalUsd = 0;
-      this.item.statusAprobacionDto = {
-        flagAprobado: true,
-        flagCerrado: false,
-        valorVentaAprobar: 0,
-        valorVentaAprobarUsd: 0,
-        aprobado: true,
-        color: 'prymary',
-        statusString: 'APROBADO',
-        precioEstimacion: 0,
-      };
+      this.item.statusAprobacionDto =
+        this.detalleBusinessRules.crearEstadoAprobadoInicial();
 
       this.calculadoraEnabled = false;
 
@@ -424,9 +732,9 @@ export class EditPage implements OnInit {
 
       this.btnUmDisabled = false;
 
-      this.uiImageLink = this.item.appProductsGetDto.link;
+      this.uiImageLink =
+        this.item.appProductsGetDto.link || this.generalService.noImageUrl();
 
-      this.appPriceDto = this.item.appProductsGetDto.appPriceDto;
 
       //nombre producto in card
       this.uiNombreProductoInCard =
@@ -559,6 +867,7 @@ export class EditPage implements OnInit {
       diasEntrega: [0, [Validators.required, Validators.min(1)]],
       observaciones: ['', [Validators.maxLength(200)]],
       obsSolicitud: ['', []],
+      obsSolicitudSobreprecio: ['', []],
       cantidadSolicitada: [0, Validators.required],
       condicionPago: [40, [Validators.required]],
       subCategoriaId: ['', []],
@@ -576,7 +885,7 @@ export class EditPage implements OnInit {
   }
 
   showData() {
-    var precioDto: PrecioDto = {
+    const precioDto = this.buildPrecioDto({
       unitPriceBaseProduction: this.unitPriceBaseProduction,
       precioMasFlete: 0,
       calculoId: this.item.calculoId,
@@ -584,9 +893,10 @@ export class EditPage implements OnInit {
       porcFlete: this.cotizacion.porcFlete,
       precioMaximo: 0,
       precioMaximoMasFlete: 0,
+      porcMaximoSobrePrecio: this.item?.porcMaximoSobrePrecio ?? 0,
       porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
-    };
-    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+    });
+    this.guardarPrecioMasFlete(precioDto);
 
     if (this.operacion === 1) {
       this.form.get('estimada').setValue(this.item.estimada);
@@ -601,7 +911,8 @@ export class EditPage implements OnInit {
       this.condicionPagoDto = this.cotizacion.condicionPagoDto;
       this.form.get('condicionPago').setValue(this.cotizacion.idCondPago);
       //editar
-      this.uiImageLink = this.item.appProductsGetDto.link;
+      this.uiImageLink =
+        this.item.appProductsGetDto.link || this.generalService.noImageUrl();
       this.form.get('unidad').setValue(this.item.appUnitsGetDto.description1); //this.item.AppUnitsGetDto.code);
       this.form.get('ordenAnterior').setValue(this.cotizacion.ordenAnterior);
       this.uiIdUnidad = this.item.idUnidad;
@@ -639,19 +950,20 @@ export class EditPage implements OnInit {
       this.form.get('diasEntrega').setValue(this.item.diasEntrega);
       this.form.get('observaciones').setValue(this.item.observaciones);
       this.form.get('obsSolicitud').setValue(this.item.obsSolicitud);
+      this.form
+        .get('obsSolicitudSobreprecio')
+        .setValue(
+          this.item.appSolicitudAprobacionDto?.observacionSolicitante ||
+            this.item.obsSolicitudSobreprecio ||
+            '',
+        );
       this.variables.permitirLectura = true;
       this.unitPriceBaseProduction = this.item.unitPriceBaseProduction;
       this.flete = this.item.flete;
       this.calculoId = this.item.calculoId;
-      if (this.item.forma == null) {
-        this.item.forma = '';
-      }
-      if (this.item.salida == null) {
-        this.item.salida = '';
-      }
-      if (this.item.presentacion == null) {
-        this.item.presentacion = '';
-      }
+      this.item.forma = this.item.forma ?? '';
+      this.item.salida = this.item.salida ?? '';
+      this.item.presentacion = this.item.presentacion ?? '';
       this.form.get('forma').setValue(this.item.forma);
       this.form.get('salida').setValue(this.item.salida);
       this.form.get('presentacion').setValue(this.item.presentacion);
@@ -668,107 +980,91 @@ export class EditPage implements OnInit {
       this.calculoId = 0;
       if (
         this.cotizacion.ordenAnterior > 0 &&
-        this.cotizacion.appOrdenProductoRepeticionGetDto != null
+        this.cotizacion.appOrdenProductoRepeticionGetDto
       ) {
+        const ordenAnterior = this.cotizacion.appOrdenProductoRepeticionGetDto;
+        const productoOrdenAnterior =
+          ordenAnterior.appProductsGetDto || (ordenAnterior as any).appProductGetDto;
+        const conversionOrdenAnterior = ordenAnterior.appProductConversionGetDto;
+
+        if (!productoOrdenAnterior?.id) {
+          this.generalService.presentToast(
+            'La orden anterior seleccionada no tiene producto asociado',
+            'warning',
+          );
+          return;
+        }
+
         this.form
           .get('subCategoriaId')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .appSubCategoryId,
-          );
+          .setValue(productoOrdenAnterior.appSubCategoryId || '');
         this.form
           .get('producto')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .code,
-          );
+          .setValue(productoOrdenAnterior.code || ordenAnterior.codProducto);
         this.form
           .get('descripcionProducto')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto
-              .description1,
-          );
+          .setValue(productoOrdenAnterior.description1 || ordenAnterior.nombreProducto);
         this.form
           .get('nombreComercialProducto')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.nombreForma,
-          );
-        this.form
-          .get('forma')
-          .setValue(this.cotizacion.appOrdenProductoRepeticionGetDto.forma);
+          .setValue(ordenAnterior.nombreForma);
+        this.form.get('forma').setValue(ordenAnterior.forma);
         this.form
           .get('salida')
-          .setValue(this.cotizacion.appOrdenProductoRepeticionGetDto.salida);
+          .setValue(ordenAnterior.salida);
         this.form
           .get('presentacion')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.presentacion,
-          );
+          .setValue(ordenAnterior.presentacion);
 
         //Propiedades
-        this.appProduct =
-          this.cotizacion.appOrdenProductoRepeticionGetDto.appProductsGetDto;
+        this.appProduct = productoOrdenAnterior;
         this.item.appProductsGetDto = this.appProduct;
         this.uiIdProducto = this.appProduct.id;
-        this.uiImageLink = this.appProduct.link;
+        this.uiImageLink =
+          this.appProduct.link || this.generalService.noImageUrl();
         this.uiNombreProductoInCard =
-          this.appProduct.description1 +
+          (this.appProduct.description1 || '') +
           ' ' +
-          this.item.appProductsGetDto.description2;
+          (this.item.appProductsGetDto.description2 || '');
         this.btnUmDisabled = false;
         this.decripcionProductionUnit =
-          this.appProduct.productionUnitGetDto.description1;
-        this.appPriceDto = this.appProduct.appPriceDto;
+          this.appProduct.productionUnitGetDto?.description1 || '';
         this.requiereDatosEntrada = this.appProduct.requiereDatosEntrada;
 
-        this.appProductConversionGetDto =
-          this.cotizacion.appOrdenProductoRepeticionGetDto.appProductConversionGetDto;
+        this.appProductConversionGetDto = conversionOrdenAnterior;
         this.form
           .get('unidad')
           .setValue(
-            this.appProductConversionGetDto.appUnitsAlternativaDescription,
+            this.appProductConversionGetDto?.appUnitsAlternativaDescription || '',
           );
-        this.uiIdUnidad = this.appProductConversionGetDto.appUnitsIdAlternativa;
+        this.uiIdUnidad =
+          this.appProductConversionGetDto?.appUnitsIdAlternativa || 0;
 
-        if (this.appProduct != null && !this.requiereDatosEntrada) {
+        if (this.appProduct && !this.requiereDatosEntrada) {
           this.form.get('medidaBasica').setValue(0);
           this.form.get('medidaOpuesta').setValue(0);
         } else {
           this.form
             .get('medidaBasica')
-            .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm,
-            );
+            .setValue(ordenAnterior.medidaBasicaCm);
           this.form
             .get('medidaOpuesta')
-            .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm,
-            );
+            .setValue(ordenAnterior.medidaOpuestaCm);
         }
 
-        if (
-          this.cotizacion.appOrdenProductoRepeticionGetDto.codProducto ===
-          '4402'
-        ) {
+        if (ordenAnterior.codProducto === '4402') {
           this.form
             .get('medidaBasica')
-            .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaBasicaCm,
-            );
+            .setValue(ordenAnterior.medidaBasicaCm);
           this.form
             .get('medidaOpuesta')
-            .setValue(
-              this.cotizacion.appOrdenProductoRepeticionGetDto.medidaOpuestaCm,
-            );
+            .setValue(ordenAnterior.medidaOpuestaCm);
         }
         this.form
           .get('cantidadSolicitada')
-          .setValue(
-            this.cotizacion.appOrdenProductoRepeticionGetDto.cantidadOrdenada,
-          );
+          .setValue(ordenAnterior.cantidadOrdenada);
 
         this.descripcionSalesUnit =
-          this.appProductConversionGetDto.appUnitsAlternativaDescription;
+          this.appProductConversionGetDto?.appUnitsAlternativaDescription || '';
       }
     }
 
@@ -782,91 +1078,300 @@ export class EditPage implements OnInit {
       this.unitPriceBaseProduction = this.item?.unitPriceBaseProduction ?? 0; // Valor por defecto (0 o el que necesites)
       this.flete = this.item?.flete ?? 0; // Valor por defecto (0 o el que necesites)
     }
+
+    this.calculaTotalVenta(this.form.get('precioUsd').value);
+  }
+
+  private getObsSolicitudParaGuardar(): string {
+    return this.detalleBusinessRules.prepararObservacionSolicitudPrecio(
+      this.form.get('obsSolicitud').value,
+      this.appProduct.requiereEstimacion === true,
+    );
+  }
+
+  private resetMedidasSiNoRequiereDatosEntrada(): void {
+    if (this.appProduct && !this.requiereDatosEntrada) {
+      this.form.get('medidaBasica').setValue(0);
+      this.form.get('medidaOpuesta').setValue(0);
+    }
+  }
+
+  private asignarCamposComunesDetalle(
+    dto: AppDetailQuotesCreateDto | AppDetailQuotesUpdateDto,
+  ): void {
+    dto.condicionPago = this.condicionPagoCodigo;
+    dto.nombreComercialProducto = this.form.get(
+      'nombreComercialProducto',
+    ).value;
+    dto.diasEntrega = this.form.get('diasEntrega').value;
+    dto.observaciones = this.form.get('observaciones').value;
+    dto.cantidad = this.form.get('cantidad').value;
+    dto.cantidadSolicitada = this.form.get('cantidadSolicitada').value;
+    dto.precio = this.form.get('precio').value;
+    dto.total = this.form.get('total').value;
+    dto.precioUsd = this.form.get('precioUsd').value;
+    dto.totalUsd = this.form.get('totalUsd').value;
+    dto.precioLista = this.unitPriceBaseProduction;
+    dto.solicitarPrecio = this.solicitarPrecio;
+    dto.obsSolicitud = this.getObsSolicitudParaGuardar();
+    dto.obsSolicitudSobreprecio = this.form.get(
+      'obsSolicitudSobreprecio',
+    ).value;
+
+    this.resetMedidasSiNoRequiereDatosEntrada();
+
+    dto.medidaBasica = this.form.get('medidaBasica').value;
+    dto.medidaOpuesta = this.form.get('medidaOpuesta').value;
+    dto.valorConvertido = this.form.get('cantidad').value;
+    dto.cantidadPorUnidadProduccion = this.cantidadPorUnidadProduccion;
+    dto.ordenAnterior = this.form.get('ordenAnterior').value;
+    dto.calculoId = this.calculoId;
+    dto.unitPriceBaseProductionMaximo = this.precioMaximo;
+    dto.porcMaximoSobrePrecio = this.getPorcMaximoSobrePrecio();
+    dto.forma = this.form.get('forma').value;
+    dto.salida = this.form.get('salida').value;
+    dto.presentacion = this.form.get('presentacion').value;
+  }
+
+  private buildCreateDetalleDto(): AppDetailQuotesCreateDto {
+    const dto = new AppDetailQuotesCreateDto();
+
+    dto.appGeneralQuotesId = this.cotizacion.id;
+    dto.cotizacion = this.cotizacion.cotizacion;
+    dto.idProducto = this.uiIdProducto;
+    dto.idUnidad = this.uiIdUnidad;
+    dto.idEstatus = 1;
+    dto.producto = this.form.get('producto').value;
+    this.asignarCamposComunesDetalle(dto);
+    dto.usuarioConectado = this.generalService.GetUsuario().user;
+
+    return dto;
+  }
+
+  private buildUpdateDetalleDto(
+    eliminarSolicitud: boolean,
+  ): AppDetailQuotesUpdateDto {
+    const dto = new AppDetailQuotesUpdateDto();
+
+    dto.eliminarSolicitud = eliminarSolicitud;
+    dto.appGeneralQuotesId = this.cotizacion.id;
+    dto.cotizacion = this.cotizacion.cotizacion;
+    dto.id = this.item.id;
+    dto.idEstatus = this.cotizacion.idEstatus;
+    dto.producto = this.item.producto;
+    dto.idProducto = this.item.idProducto;
+    dto.idUnidad = this.uiIdUnidad;
+    this.asignarCamposComunesDetalle(dto);
+    dto.usuarioConectado = this.generalService.GetUsuario().user;
+
+    return dto;
+  }
+
+  private validarProductoNoModificado(): boolean {
+    const validationMessage =
+      this.detalleBusinessRules.validarIdentidadProductoDetalle({
+        operacion: this.operacion,
+        idProductoOriginal: this.item?.idProducto,
+        idProductoActual: this.uiIdProducto,
+      });
+
+    if (!validationMessage) {
+      return true;
+    }
+
+    this.restaurarIdentidadProductoOriginal();
+    this.generalService.presentToast(validationMessage, 'danger');
+    return false;
+  }
+
+  private restaurarIdentidadProductoOriginal(): void {
+    if (!this.item?.idProducto) {
+      return;
+    }
+
+    this.appProduct = this.item.appProductsGetDto;
+    this.uiIdProducto = this.item.idProducto;
+    this.form.get('producto').setValue(this.item.appProductsGetDto?.code || '');
+    this.form
+      .get('descripcionProducto')
+      .setValue(this.item.appProductsGetDto?.description1 || '');
+    this.form
+      .get('subCategoriaId')
+      .setValue(this.item.appProductsGetDto?.appSubCategoryId || '');
+    this.subCategoryid = this.item.appProductsGetDto?.appSubCategoryId;
+  }
+
+  private aplicarCotizacionGuardada(
+    cotizacionGuardada: AppGeneralQuotesGetDto,
+    actualizarCotizacionActual: boolean,
+    asignarPrimerDetalle: boolean,
+  ): void {
+    this.appGeneralQuotesGetDto = cotizacionGuardada;
+
+    if (actualizarCotizacionActual) {
+      this.cotizacion = cotizacionGuardada;
+    }
+
+    this.detalleItems = (
+      this.appGeneralQuotesGetDto.appDetailQuotesGetDto || []
+    ).map((detalle) => this.mapDetalleItem(detalle));
+
+    if (asignarPrimerDetalle) {
+      this.item =
+        this.detalleItems.find((detalle) => detalle.id === this.item?.id) ||
+        this.detalleItems[0];
+    }
+
+    this.cotizacionesListService.cotizacion$.next(
+      actualizarCotizacionActual ? this.cotizacion : this.appGeneralQuotesGetDto,
+    );
+  }
+
+  private normalizarCotizacionDespuesDeEliminar(
+    data: any,
+    detalleEliminadoId: number,
+  ): AppGeneralQuotesGetDto {
+    const cotizacionRespuesta = Array.isArray(data) ? data[0] : data;
+    const cotizacionBase =
+      cotizacionRespuesta && cotizacionRespuesta.appDetailQuotesGetDto
+        ? cotizacionRespuesta
+        : this.cotizacion;
+
+    return {
+      ...cotizacionBase,
+      appDetailQuotesGetDto: (
+        cotizacionBase?.appDetailQuotesGetDto || []
+      ).filter((detalle) => !this.esMismoDetalle(detalle.id, detalleEliminadoId)),
+    };
+  }
+
+  private esMismoDetalle(idA: any, idB: any): boolean {
+    return String(idA ?? '') === String(idB ?? '');
+  }
+
+  private removerDetalleLocal(detalleEliminadoId: any): void {
+    const detallesActuales = this.detalleItems || [];
+    const detallesFiltrados = detallesActuales.filter(
+      (detalle) => !this.esMismoDetalle(detalle.id, detalleEliminadoId),
+    );
+    const sinDetalles = detallesFiltrados.length === 0;
+
+    this.detalleItems = detallesFiltrados;
+
+    if (this.cotizacion) {
+      this.cotizacion = {
+        ...this.cotizacion,
+        ordenAnterior: sinDetalles ? 0 : this.cotizacion.ordenAnterior,
+        appDetailQuotesGetDto: detallesFiltrados,
+      };
+    }
+
+    if (this.appGeneralQuotesGetDto) {
+      this.appGeneralQuotesGetDto = {
+        ...this.appGeneralQuotesGetDto,
+        ordenAnterior: sinDetalles
+          ? 0
+          : this.appGeneralQuotesGetDto.ordenAnterior,
+        appDetailQuotesGetDto: detallesFiltrados,
+      };
+    }
+  }
+
+  private seleccionarDetalleDespuesDeEliminar(): void {
+    const primerDetalle = this.detalleItems[0];
+
+    if (primerDetalle) {
+      this.cargarDetalleEnFormulario(primerDetalle);
+      return;
+    }
+
+    this.nuevoProducto(true);
+  }
+
+  private refrescarDetallesDespuesDeEliminar(
+    detalleEliminadoId: any,
+    mensajeExito: string,
+  ): void {
+    const filter = {
+      appGeneralQuotesId: this.cotizacion.id,
+      appGeneralQuoteId: this.cotizacion.id,
+      idAppGeneralQuotes: this.cotizacion.id,
+      id: this.cotizacion.id,
+      cotizacion: this.cotizacion.cotizacion,
+    };
+
+    this.cotizacionesListService
+      .GetListaDetalleCotizacionPorGeneralId(filter)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (resp) => {
+          const data = resp?.data;
+          const detallesRespuesta = Array.isArray(data)
+            ? data[0]?.appDetailQuotesGetDto || data
+            : data?.appDetailQuotesGetDto || [];
+          const detalles = detallesRespuesta.filter(
+            (detalle) => !this.esMismoDetalle(detalle.id, detalleEliminadoId),
+          );
+          const cotizacionActualizada = {
+            ...this.cotizacion,
+            ordenAnterior:
+              detalles.length === 0 ? 0 : this.cotizacion.ordenAnterior,
+            appDetailQuotesGetDto: detalles,
+          };
+
+          this.aplicarCotizacionGuardada(cotizacionActualizada, true, false);
+          this.seleccionarDetalleDespuesDeEliminar();
+
+          this.generalService.presentToast(mensajeExito, 'success');
+        },
+        error: () => {
+          this.seleccionarDetalleDespuesDeEliminar();
+
+          this.generalService.presentToast(mensajeExito, 'success');
+        },
+      });
+  }
+
+  private mostrarResultadoGuardado(message: string): void {
+    const mensajeSolicitarPrecio =
+      this.appGeneralQuotesGetDto?.mensajeSolicitarPrecio || '';
+
+    if (mensajeSolicitarPrecio.length > 0) {
+      this.generalService.presentToastLong(
+        'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' + mensajeSolicitarPrecio,
+        'danger',
+      );
+      return;
+    }
+
+    this.generalService.presentToast(message, 'success');
   }
 
   //Insert - ok
   onInsert(eliminarSolicitud: boolean) {
+    if (!this.validarAdicionarDetalle()) {
+      return;
+    }
+
     this.setPrecioMasFlete();
-    this.detailCreateDto.appGeneralQuotesId = this.cotizacion.id;
-    this.detailCreateDto.cotizacion = this.cotizacion.cotizacion;
-    this.detailCreateDto.condicionPago = this.condicionPagoCodigo;
-    this.detailCreateDto.idProducto = this.uiIdProducto;
-    this.detailCreateDto.idUnidad = this.uiIdUnidad;
-    this.detailCreateDto.idEstatus = 1;
-    this.detailCreateDto.producto = this.form.get('producto').value;
-    this.detailCreateDto.nombreComercialProducto = this.form.get(
-      'nombreComercialProducto',
-    ).value;
-    this.detailCreateDto.diasEntrega = this.form.get('diasEntrega').value;
-    this.detailCreateDto.observaciones = this.form.get('observaciones').value;
-
-    //
-    this.detailCreateDto.cantidad = this.form.get('cantidad').value;
-    this.detailCreateDto.cantidadSolicitada =
-      this.form.get('cantidadSolicitada').value;
-    this.detailCreateDto.precio = this.form.get('precio').value;
-    this.detailCreateDto.total = this.form.get('total').value;
-    this.detailCreateDto.precioUsd = this.form.get('precioUsd').value;
-    this.detailCreateDto.totalUsd = this.form.get('totalUsd').value;
-
-    this.detailCreateDto.precioLista = this.unitPriceBaseProduction;
-    this.detailCreateDto.solicitarPrecio = this.solicitarPrecio;
-    this.detailCreateDto.obsSolicitud = this.form.get('obsSolicitud').value;
-    if (this.appProduct.requiereEstimacion === true) {
-      this.detailCreateDto.obsSolicitud =
-        '***SOLICITUD DE ESTIMACION****' + this.form.get('obsSolicitud').value;
-    }
-
-    if (this.appProduct != null && !this.requiereDatosEntrada) {
-      this.form.get('medidaBasica').setValue(0);
-      this.form.get('medidaOpuesta').setValue(0);
-    }
-
-    this.detailCreateDto.medidaBasica = this.form.get('medidaBasica').value;
-    this.detailCreateDto.medidaOpuesta = this.form.get('medidaOpuesta').value;
-
-    this.detailCreateDto.valorConvertido = this.form.get('cantidad').value;
-    this.detailCreateDto.cantidadPorUnidadProduccion =
-      this.cantidadPorUnidadProduccion;
-    this.detailCreateDto.ordenAnterior = this.form.get('ordenAnterior').value;
-    this.detailCreateDto.calculoId = this.calculoId;
-    this.detailCreateDto.unitPriceBaseProductionMaximo = this.precioMaximo;
-    this.detailCreateDto.forma = this.form.get('forma').value;
-    this.detailCreateDto.salida = this.form.get('salida').value;
-    this.detailCreateDto.presentacion = this.form.get('presentacion').value;
-    const user = this.generalService.GetUsuario();
-    this.detailCreateDto.usuarioConectado = user.user;
+    const detailCreateDto = this.buildCreateDetalleDto();
     this.showLoading = true;
 
     this.mensaje = 'Guardando Cotizacion';
     this.cotizacionesListService
-      .InsertDetalleCotizacion(this.detailCreateDto)
+      .InsertDetalleCotizacion(detailCreateDto)
+      .pipe(takeUntil(this.destroy$))
       .subscribe((result) => {
         if (result.meta.isValid) {
-          this.appGeneralQuotesGetDto = result.data[0];
-          this.cotizacion = result.data[0];
-          console.log('Result al crear', result.data);
-
-          //capturo el registro insertado y lo asigno a 'item' (requerido en la calculadora)
-          this.item = this.appGeneralQuotesGetDto.appDetailQuotesGetDto[0];
-
-          this.cotizacionesListService.cotizacion$.next(this.cotizacion);
+          this.aplicarCotizacionGuardada(result.data[0], true, true);
+          this.detalleSeleccionadoId = this.item?.id || 0;
+          this.operacion = 1;
+          this.configuraCreateOrEdit();
         }
 
-        if (result.meta.isValid === true) {
+        if (result.meta.isValid) {
           this.showLoading = false;
-
-          if (this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0) {
-            this.generalService.presentToastLong(
-              'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
-                this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
-              'danger',
-            );
-          } else {
-            this.generalService.presentToast(result.meta.message, 'success');
-          }
-
-          this.goListDetalleCotizacion();
+          this.mostrarResultadoGuardado(result.meta.message);
         } else {
           this.showLoading = false;
           this.generalService.presentToast(result.meta.message, 'danger');
@@ -875,234 +1380,49 @@ export class EditPage implements OnInit {
       });
   }
 
-  //ok!
-  onUpdateFr(eliminarSolicitud: boolean) {
-    //let objetoDetailForUpdate: AppDetailQuotesUpdateDto = new AppDetailQuotesUpdateDto()
-
-    this.setPrecioMasFlete();
-
-    //establece cantidad, precio y total con datos de la UI
-    this.detailUpdateDto.eliminarSolicitud = eliminarSolicitud;
-    this.detailUpdateDto.cantidad = this.form.get('cantidad').value;
-    this.detailUpdateDto.condicionPago = this.condicionPagoCodigo;
-    this.detailUpdateDto.cantidadSolicitada =
-      this.form.get('cantidadSolicitada').value;
-    this.detailUpdateDto.precio = this.form.get('precio').value;
-    this.detailUpdateDto.total = this.form.get('total').value;
-    this.detailUpdateDto.precioUsd = this.form.get('precioUsd').value;
-    this.detailUpdateDto.totalUsd = this.form.get('totalUsd').value;
-
-    this.detailUpdateDto.precioLista = this.unitPriceBaseProduction;
-
-    this.detailUpdateDto.solicitarPrecio = this.solicitarPrecio;
-    this.detailUpdateDto.obsSolicitud = this.form.get('obsSolicitud').value;
-    if (this.appProduct.requiereEstimacion === true) {
-      this.detailUpdateDto.obsSolicitud =
-        '***SOLICITUD DE ESTIMACION****' + this.form.get('obsSolicitud').value;
-    }
-    //complementos del DTO
-    this.detailUpdateDto.appGeneralQuotesId = this.cotizacion.id;
-    this.detailUpdateDto.cotizacion = this.cotizacion.cotizacion;
-    this.detailUpdateDto.id = this.item.id;
-    this.detailUpdateDto.idEstatus = this.cotizacion.idEstatus;
-
-    this.detailUpdateDto.producto = this.item.producto;
-    this.detailUpdateDto.idProducto = this.uiIdProducto;
-    this.detailUpdateDto.nombreComercialProducto = this.form.get(
-      'nombreComercialProducto',
-    ).value;
-
-    this.detailUpdateDto.idUnidad = this.uiIdUnidad;
-
-    this.detailUpdateDto.observaciones = this.form.get('observaciones').value;
-    this.detailUpdateDto.diasEntrega = this.form.get('diasEntrega').value;
-
-    this.detailUpdateDto.usuarioConectado =
-      this.generalService.GetUsuario().user;
-
-    if (!this.requiereDatosEntrada) {
-      this.form.get('medidaBasica').setValue(0);
-      this.form.get('medidaOpuesta').setValue(0);
-    }
-
-    this.detailUpdateDto.medidaBasica = this.form.get('medidaBasica').value;
-    this.detailUpdateDto.medidaOpuesta = this.form.get('medidaOpuesta').value;
-
-    this.detailUpdateDto.valorConvertido = this.form.get('cantidad').value;
-    this.detailUpdateDto.cantidadPorUnidadProduccion =
-      this.cantidadPorUnidadProduccion;
-    this.detailUpdateDto.ordenAnterior = this.form.get('ordenAnterior').value;
-    this.detailUpdateDto.calculoId = this.calculoId;
-    this.detailUpdateDto.unitPriceBaseProductionMaximo = this.precioMaximo;
-    this.detailUpdateDto.forma = this.form.get('forma').value;
-    this.detailUpdateDto.salida = this.form.get('salida').value;
-    this.detailUpdateDto.presentacion = this.form.get('presentacion').value;
-
-    this.showLoading = true;
-    this.mensaje = 'Guardando Cotizacion';
-
-    this.cotizacionesListService
-      .UpdateDetalleCotizacion(this.detailUpdateDto)
-      .subscribe((result) => {
-        if (result.meta.isValid) {
-          //recibo cotizacion actualizada desde la api
-          this.appGeneralQuotesGetDto = result.data[0];
-
-          this.cotizacionesListService.cotizacion$.next(
-            this.appGeneralQuotesGetDto,
-          );
-          this.showLoading = false;
-          this.mensaje = '';
-
-          if (this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0) {
-            this.generalService.presentToastLong(
-              'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
-                this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
-              'danger',
-            );
-          } else {
-            this.generalService.presentToast(result.meta.message, 'success');
-          }
-          //mensaje operacin exitosa
-
-          this.goListDetalleCotizacion();
-        } else {
-          //mensaje operacion fallida
-          this.showLoading = false;
-          this.generalService.presentToast(result.meta.message, 'danger');
-        }
-      });
-  }
-
   onUpdate(eliminarSolicitud: boolean) {
-    // 1. Control de errores para la lógica de asignación de datos del formulario
+    let detailUpdateDto: AppDetailQuotesUpdateDto;
+
     try {
-      //let objetoDetailForUpdate: AppDetailQuotesUpdateDto = new AppDetailQuotesUpdateDto()
-
-      // Asignación de datos y cálculos preliminares
       this.setPrecioMasFlete();
-
-      // Establece cantidad, precio y total con datos de la UI
-      this.detailUpdateDto.eliminarSolicitud = eliminarSolicitud;
-      this.detailUpdateDto.cantidad = this.form.get('cantidad').value;
-      this.detailUpdateDto.condicionPago = this.condicionPagoCodigo;
-      this.detailUpdateDto.cantidadSolicitada =
-        this.form.get('cantidadSolicitada').value;
-      this.detailUpdateDto.precio = this.form.get('precio').value;
-      this.detailUpdateDto.total = this.form.get('total').value;
-      this.detailUpdateDto.precioUsd = this.form.get('precioUsd').value;
-      this.detailUpdateDto.totalUsd = this.form.get('totalUsd').value;
-
-      this.detailUpdateDto.precioLista = this.unitPriceBaseProduction;
-
-      this.detailUpdateDto.solicitarPrecio = this.solicitarPrecio;
-      this.detailUpdateDto.obsSolicitud = this.form.get('obsSolicitud').value;
-      if (this.appProduct.requiereEstimacion === true) {
-        this.detailUpdateDto.obsSolicitud =
-          '***SOLICITUD DE ESTIMACION****' +
-          this.form.get('obsSolicitud').value;
-      }
-
-      // Complementos del DTO
-      this.detailUpdateDto.appGeneralQuotesId = this.cotizacion.id;
-      this.detailUpdateDto.cotizacion = this.cotizacion.cotizacion;
-      this.detailUpdateDto.id = this.item.id;
-      this.detailUpdateDto.idEstatus = this.cotizacion.idEstatus;
-
-      this.detailUpdateDto.producto = this.item.producto;
-      this.detailUpdateDto.idProducto = this.uiIdProducto;
-      this.detailUpdateDto.nombreComercialProducto = this.form.get(
-        'nombreComercialProducto',
-      ).value;
-
-      this.detailUpdateDto.idUnidad = this.uiIdUnidad;
-
-      this.detailUpdateDto.observaciones = this.form.get('observaciones').value;
-      this.detailUpdateDto.diasEntrega = this.form.get('diasEntrega').value;
-
-      this.detailUpdateDto.usuarioConectado =
-        this.generalService.GetUsuario().user;
-
-      if (!this.requiereDatosEntrada) {
-        this.form.get('medidaBasica').setValue(0);
-        this.form.get('medidaOpuesta').setValue(0);
-      }
-
-      this.detailUpdateDto.medidaBasica = this.form.get('medidaBasica').value;
-      this.detailUpdateDto.medidaOpuesta = this.form.get('medidaOpuesta').value;
-
-      this.detailUpdateDto.valorConvertido = this.form.get('cantidad').value;
-      this.detailUpdateDto.cantidadPorUnidadProduccion =
-        this.cantidadPorUnidadProduccion;
-      this.detailUpdateDto.ordenAnterior = this.form.get('ordenAnterior').value;
-      this.detailUpdateDto.calculoId = this.calculoId;
-      this.detailUpdateDto.unitPriceBaseProductionMaximo = this.precioMaximo;
-      this.detailUpdateDto.forma = this.form.get('forma').value;
-      this.detailUpdateDto.salida = this.form.get('salida').value;
-      this.detailUpdateDto.presentacion = this.form.get('presentacion').value;
+      detailUpdateDto = this.buildUpdateDetalleDto(eliminarSolicitud);
 
       this.showLoading = true;
       this.mensaje = 'Guardando Cotizacion';
-    } catch (error) {
-      // Manejo de errores en la asignación de datos (p. ej., si this.form.get('algo') falla)
-      console.error(
-        'Error al preparar los datos para la actualización:',
-        error,
-      );
+    } catch {
       this.showLoading = false;
       this.mensaje = 'Error interno al procesar los datos.';
       this.generalService.presentToast(
         'Error interno: Falló la preparación de datos.',
         'danger',
       );
-      return; // Detener la ejecución si falla la preparación de datos
+      return;
     }
 
-    // 2. Control de errores para la llamada al servicio
     this.cotizacionesListService
-      .UpdateDetalleCotizacion(this.detailUpdateDto)
+      .UpdateDetalleCotizacion(detailUpdateDto)
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
           if (result.meta.isValid) {
-            // Recibo cotización actualizada desde la api
-            this.appGeneralQuotesGetDto = result.data[0];
-
-            this.cotizacionesListService.cotizacion$.next(
-              this.appGeneralQuotesGetDto,
+            this.aplicarCotizacionGuardada(result.data[0], false, false);
+            const itemActualizado = this.detalleItems.find(
+              (detalle) => detalle.id === this.item.id,
             );
+            if (itemActualizado) {
+              this.cargarDetalleEnFormulario(itemActualizado);
+            }
             this.showLoading = false;
             this.mensaje = '';
-
-            // Mensaje de éxito con manejo especial para la solicitud de precio
-            if (
-              this.appGeneralQuotesGetDto.mensajeSolicitarPrecio &&
-              this.appGeneralQuotesGetDto.mensajeSolicitarPrecio.length > 0
-            ) {
-              this.generalService.presentToastLong(
-                'COTIZACIÓN ENVIADA PARA APROBACIÓN POR: ' +
-                  this.appGeneralQuotesGetDto.mensajeSolicitarPrecio,
-                'danger', // Usar 'danger' o un color de alerta para destacar la necesidad de aprobación
-              );
-            } else {
-              this.generalService.presentToast(result.meta.message, 'success');
-            }
-
-            this.goListDetalleCotizacion();
+            this.mostrarResultadoGuardado(result.meta.message);
           } else {
-            // Mensaje operación fallida (errores de validación o negocio de la API)
             this.showLoading = false;
             this.generalService.presentToast(result.meta.message, 'danger');
           }
         },
         error: (err) => {
-          // Manejo de errores de red o del servidor (HTTP/conexión)
-          console.error(
-            'Error en la llamada al servicio UpdateDetalleCotizacion:',
-            err,
-          );
           this.showLoading = false;
           this.mensaje = '';
-          // Proporcionar un mensaje de error más genérico si el error del servidor no es amigable
           let errorMessage =
             'Error al actualizar el detalle de la cotización. Intente de nuevo.';
           if (err && err.message) {
@@ -1110,106 +1430,34 @@ export class EditPage implements OnInit {
           }
           this.generalService.presentToast(errorMessage, 'danger');
         },
-        complete: () => {
-          // Opcional: Lógica a ejecutar cuando el observable se completa
-          console.log('Actualización de detalle de cotización completada.');
-        },
       });
   }
 
   onSave(eliminarSolicitud: boolean): void {
-    if (this.form.get('diasEntrega').value === 0) {
-      this.generalService.presentToast('Indique Los dias de entrega', 'danger');
+    if (!this.validarProductoNoModificado()) {
       return;
     }
 
-    if (
-      this.appProduct.tipoCalculo === 1 &&
-      (this.form.get('medidaBasica').value <= 0 ||
-        this.form.get('medidaOpuesta').value <= 0)
-    ) {
-      this.generalService.presentToast(
-        'Indique Medida Basica y Medida Opuesta',
-        'danger',
-      );
-      return;
-    }
-    if (
-      this.appProduct.tipoCalculo === 4 &&
-      (this.form.get('medidaBasica').value <= 0 ||
-        this.form.get('medidaOpuesta').value <= 0)
-    ) {
-      this.generalService.presentToast(
-        'Indique Medida Basica y Medida Opuesta',
-        'danger',
-      );
-      return;
-    }
-    if (
-      this.requiereAprobacionPrecio === true &&
-      this.form.get('obsSolicitud').value === ''
-    ) {
-      this.generalService.presentToast(
-        'Indique observacion de Solictud de precios y presione enviar solicitud',
-        'danger',
-      );
-      return;
-    }
-    if (
-      this.appProduct &&
-      this.appProduct.appSubCategoryId === 9 &&
-      this.form.get('salida').value.length <= 0
-    ) {
-      this.generalService.presentToast(
-        'Debe indicar la salida de la Etiqueta',
-        'danger',
-      );
-      return;
-    }
-    if (
-      this.appProduct &&
-      this.appProduct.appSubCategoryId === 9 &&
-      this.form.get('forma').value.length <= 0
-    ) {
-      this.generalService.presentToast(
-        'Debe indicar la  Forma de la Etiqueta (Regular,Irregular)',
-        'danger',
-      );
-      return;
-    }
-    if (
-      this.appProduct &&
-      this.appProduct.appSubCategoryId === 9 &&
-      this.form.get('presentacion').value.length <= 5
-    ) {
-      this.generalService.presentToast(
-        'Debe indicar la Presentacion de la Etiqueta(Minimo 5 Digitos)',
-        'danger',
-      );
-      return;
-    }
-    const precio = this.item.statusAprobacionDto.valorVentaAprobarUsd;
-    if (
-      this.item.statusAprobacionDto.valorVentaAprobarUsd > 0 &&
-      this.form.get('precioUsd').value < precio
-    ) {
-      this.generalService.presentToast(
-        'Precio es menor a el precio Aprobado',
-        'danger',
-      );
+    const validationMessage = this.detalleBusinessRules.validarGuardado({
+      diasEntrega: this.form.get('diasEntrega').value,
+      tipoCalculo: this.appProduct?.tipoCalculo,
+      medidaBasica: this.form.get('medidaBasica').value,
+      medidaOpuesta: this.form.get('medidaOpuesta').value,
+      requiereAprobacionPrecio: this.requiereAprobacionPrecio,
+      observacionSolicitud: this.form.get('obsSolicitud').value,
+      appSubCategoryId: this.appProduct?.appSubCategoryId,
+      salida: this.form.get('salida').value,
+      forma: this.form.get('forma').value,
+      presentacion: this.form.get('presentacion').value,
+      precioAprobadoUsd: this.item.statusAprobacionDto.valorVentaAprobarUsd,
+      precioVentaUsd: this.form.get('precioUsd').value,
+    });
+
+    if (validationMessage) {
+      this.generalService.presentToast(validationMessage, 'danger');
       return;
     }
 
-    if (
-      this.requiereAprobacionPrecio === true &&
-      this.form.get('obsSolicitud').value === ''
-    ) {
-      this.generalService.presentToast(
-        'Indique observacion de Solictud de precios y presione enviar solicitud',
-        'danger',
-      );
-      return;
-    }
     if (this.requiereAprobacionPrecio === true) {
       this.solicitarPrecio = true;
     }
@@ -1234,7 +1482,7 @@ export class EditPage implements OnInit {
       this.form.get('obsSolicitud').value === ''
     ) {
       this.generalService.presentToast(
-        'Indique observacion de Solictud de precios y presione enviar solicitud',
+        'Indique observación de solicitud de precios y presione enviar solicitud',
         'danger',
       );
       return;
@@ -1242,6 +1490,397 @@ export class EditPage implements OnInit {
       this.solicitarPrecio = true;
       this.onSave(true);
     }
+  }
+
+  puedeEnviarSolicitudPrecio(): boolean {
+    const precioVenta = this.toNumber(this.form?.get('precioUsd')?.value);
+    const observacion = (this.form?.get('obsSolicitud')?.value || '').trim();
+
+    return (
+      !this.showLoading &&
+      this.form?.valid === true &&
+      this.requiereAprobacionPrecio === true &&
+      precioVenta > 0 &&
+      observacion.length > 0
+    );
+  }
+
+  puedeEnviarAprobacionPorSobreprecio(): boolean {
+    return this.detalleBusinessRules.puedeEnviarAprobacionPorSobreprecio(
+      this.getPrecioBaseSobreprecio(),
+      this.getPrecioVentaActual(),
+      this.getPorcMaximoSobrePrecio(),
+    );
+  }
+
+  getSolicitudAprobacionSobreprecio(
+    item: AppDetailQuotesGetDto = this.item,
+  ): AppSolicitudAprobacion {
+    return item?.appSolicitudAprobacionDto || null;
+  }
+
+  tieneSolicitudSobreprecio(item: AppDetailQuotesGetDto = this.item): boolean {
+    return !!this.getSolicitudAprobacionSobreprecio(item);
+  }
+
+  solicitudSobreprecioPendiente(
+    item: AppDetailQuotesGetDto = this.item,
+  ): boolean {
+    const solicitud = this.getSolicitudAprobacionSobreprecio(item);
+    return !!solicitud && !solicitud.aprobado && !solicitud.rechazado;
+  }
+
+  solicitudSobreprecioAprobada(
+    item: AppDetailQuotesGetDto = this.item,
+  ): boolean {
+    return this.getSolicitudAprobacionSobreprecio(item)?.aprobado === true;
+  }
+
+  solicitudSobreprecioRechazada(
+    item: AppDetailQuotesGetDto = this.item,
+  ): boolean {
+    return this.getSolicitudAprobacionSobreprecio(item)?.rechazado === true;
+  }
+
+  puedeSolicitarAprobacionPorSobreprecio(): boolean {
+    if (!this.puedeEnviarAprobacionPorSobreprecio()) {
+      return false;
+    }
+
+    return (
+      !this.tieneSolicitudSobreprecio() || this.solicitudSobreprecioRechazada()
+    );
+  }
+
+  puedeEnviarSolicitudSobreprecio(): boolean {
+    const observacion = (
+      this.form?.get('obsSolicitudSobreprecio')?.value || ''
+    ).trim();
+
+    return (
+      !this.showLoading &&
+      this.form?.valid === true &&
+      this.puedeSolicitarAprobacionPorSobreprecio() &&
+      observacion.length > 0
+    );
+  }
+
+  getEstadoSolicitudSobreprecio(
+    solicitud: AppSolicitudAprobacion = this.getSolicitudAprobacionSobreprecio(),
+  ): string {
+    if (!solicitud) {
+      return '';
+    }
+
+    if (solicitud.aprobado) {
+      return 'Sobreprecio aprobado';
+    }
+
+    if (solicitud.rechazado) {
+      return 'Sobreprecio rechazado';
+    }
+
+    return 'Sobreprecio pendiente';
+  }
+
+  getColorSolicitudSobreprecio(
+    solicitud: AppSolicitudAprobacion = this.getSolicitudAprobacionSobreprecio(),
+  ): string {
+    if (!solicitud) {
+      return 'danger';
+    }
+
+    if (solicitud.aprobado) {
+      return 'success';
+    }
+
+    if (solicitud.rechazado) {
+      return 'danger';
+    }
+
+    return 'warning';
+  }
+
+  getClaseBannerSolicitudSobreprecio(): string {
+    if (this.solicitudSobreprecioAprobada()) {
+      return 'status-approved';
+    }
+
+    if (this.solicitudSobreprecioRechazada()) {
+      return 'status-rejected';
+    }
+
+    return 'status-pending';
+  }
+
+  getIconoSolicitudSobreprecio(): string {
+    if (this.solicitudSobreprecioAprobada()) {
+      return 'checkmark-circle';
+    }
+
+    if (this.solicitudSobreprecioRechazada()) {
+      return 'close-circle';
+    }
+
+    return 'alert-circle';
+  }
+
+  getPrecioVentaActual(): number {
+    return Number(this.form?.get('precioUsd')?.value || this.variables.precioUsd || 0);
+  }
+
+  getPrecioBaseSobreprecio(): number {
+    return Number(this.newPrecioMasFlete || 0);
+  }
+
+  getPorcentajeSobreprecio(): number {
+    return this.detalleBusinessRules.calcularPorcentajeSobreprecio(
+      this.getPrecioBaseSobreprecio(),
+      this.getPrecioVentaActual(),
+    );
+  }
+
+  getPorcMaximoSobrePrecio(): number {
+    const precio = this.getPrecioMasFleteStorage();
+    return this.toNumber(
+      this.porcMaximoSobrePrecio ??
+        precio?.porcMaximoSobrePrecio ??
+        this.item?.porcMaximoSobrePrecio ??
+        0,
+    );
+  }
+
+  enviarAprobacionPorSobreprecio() {
+    if (!this.puedeSolicitarAprobacionPorSobreprecio()) {
+      if (this.solicitudSobreprecioPendiente()) {
+        this.generalService.presentToast(
+          'Ya existe una solicitud de sobreprecio pendiente',
+          'warning',
+        );
+        return;
+      }
+
+      if (this.solicitudSobreprecioAprobada()) {
+        this.generalService.presentToast(
+          'El sobreprecio ya fue aprobado',
+          'success',
+        );
+        return;
+      }
+
+      this.generalService.presentToast(
+        `El sobreprecio no supera el ${this.generalService.maskFloat(
+          this.getPorcMaximoSobrePrecio(),
+        )}%`,
+        'warning',
+      );
+      return;
+    }
+
+    if (!this.item?.id && this.operacion !== 0) {
+      this.generalService.presentToast(
+        'Guarde el producto antes de enviarlo a aprobación por sobreprecio',
+        'warning',
+      );
+      return;
+    }
+
+    const observacionSolicitante = (
+      this.form.get('obsSolicitudSobreprecio')?.value || ''
+    ).trim();
+
+    if (!observacionSolicitante) {
+      this.generalService.presentToast(
+        'Indique observación de solicitud de sobreprecio',
+        'danger',
+      );
+      return;
+    }
+
+    const usuario = this.generalService.GetUsuario();
+    const productoMaestro = this.appProduct || this.item?.appProductsGetDto;
+    const codigoProducto = (
+      productoMaestro?.externalCode ||
+      productoMaestro?.['ExternalCode'] ||
+      ''
+    ).trim();
+
+    if (!codigoProducto) {
+      this.generalService.presentToast(
+        'El producto no tiene código externo configurado',
+        'danger',
+      );
+      return;
+    }
+
+    this.guardarFormularioAntesDeEnviarSobreprecio(() => {
+      this.enviarSolicitudAprobacionPorSobreprecio(
+        codigoProducto,
+        usuario?.user ?? '',
+        observacionSolicitante,
+      );
+    });
+  }
+
+  private enviarSolicitudAprobacionPorSobreprecio(
+    codigoProducto: string,
+    usuarioSolicitante: string,
+    observacionSolicitante: string,
+  ) {
+    this.showLoading = true;
+    this.mensaje = 'Enviando solicitud de aprobación por sobreprecio';
+    this.solicitudAprobacionService
+      .createFromDetailQuote({
+        cotizacion: this.item?.cotizacion || this.cotizacion?.cotizacion,
+        codigoProducto,
+        usuarioSolicitante,
+        observacionSolicitante,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.showLoading = false;
+          this.mensaje = '';
+          const isValid =
+            result?.isValid === true || result?.meta?.isValid === true;
+          const message =
+            result?.message ||
+            result?.meta?.message ||
+            'Solicitud enviada para aprobación por sobreprecio';
+
+          this.generalService.presentToast(
+            message,
+            isValid ? 'success' : 'danger',
+          );
+
+          if (isValid && this.item) {
+            this.item.obsSolicitudSobreprecio = observacionSolicitante;
+            this.item.appSolicitudAprobacionDto =
+              result?.data ||
+              ({
+                cotizacion: this.item?.cotizacion || this.cotizacion?.cotizacion,
+                codigoProducto,
+                observacionSolicitante,
+                usuarioSolicitante,
+                aprobado: false,
+                rechazado: false,
+              } as AppSolicitudAprobacion);
+            this.item.statusAprobacionSobreprecioDto = {
+              ...(this.item.statusAprobacionSobreprecioDto ||
+                this.item.statusAprobacionDto),
+              statusString: 'PENDIENTE',
+              aprobado: false,
+            };
+            this.sincronizarDetalleActualEnLista();
+          }
+        },
+        error: () => {
+          this.showLoading = false;
+          this.mensaje = '';
+          this.generalService.presentToast(
+            'Error al conectar con el servidor',
+            'danger',
+          );
+        },
+      });
+  }
+
+  private sincronizarDetalleActualEnLista(): void {
+    if (!this.item?.id) {
+      return;
+    }
+
+    this.detalleItems = this.detalleItems.map((detalle) =>
+      detalle.id === this.item.id ? this.mapDetalleItem(this.item) : detalle,
+    );
+  }
+
+  private guardarFormularioAntesDeEnviarSobreprecio(
+    onGuardado: () => void,
+  ): void {
+    let detailDto: AppDetailQuotesCreateDto | AppDetailQuotesUpdateDto;
+
+    try {
+      this.setPrecioMasFlete();
+      detailDto =
+        this.operacion === 0
+          ? this.buildCreateDetalleDto()
+          : this.buildUpdateDetalleDto(false);
+    } catch {
+      this.generalService.presentToast(
+        'Error interno al preparar el guardado',
+        'danger',
+      );
+      return;
+    }
+
+    this.showLoading = true;
+    this.mensaje = 'Guardando cotización antes de enviar sobreprecio';
+
+    const request$ =
+      this.operacion === 0
+        ? this.cotizacionesListService.InsertDetalleCotizacion(
+            detailDto as AppDetailQuotesCreateDto,
+          )
+        : this.cotizacionesListService.UpdateDetalleCotizacion(
+            detailDto as AppDetailQuotesUpdateDto,
+          );
+
+    request$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          const isValid = result?.meta?.isValid === true;
+          if (!isValid) {
+            this.showLoading = false;
+            this.mensaje = '';
+            this.generalService.presentToast(
+              result?.meta?.message || 'No se pudo guardar la cotización',
+              'danger',
+            );
+            return;
+          }
+
+          const cotizacionGuardada = result.data[0];
+          this.aplicarCotizacionGuardada(
+            cotizacionGuardada,
+            true,
+            this.operacion === 0,
+          );
+          this.cotizacionesListService.cotizacion$.next(
+            this.appGeneralQuotesGetDto,
+          );
+
+          const itemActualizado = this.operacion === 0
+            ? this.item
+            : this.appGeneralQuotesGetDto.appDetailQuotesGetDto?.find(
+                (detalle) => detalle.id === this.item.id,
+              );
+
+          if (itemActualizado) {
+            this.item = itemActualizado;
+            this.appProduct = this.item.appProductsGetDto || this.appProduct;
+          }
+
+          if (this.operacion === 0) {
+            this.detalleSeleccionadoId = this.item?.id || 0;
+            this.operacion = 1;
+            this.configuraCreateOrEdit();
+          }
+
+          this.showLoading = false;
+          this.mensaje = '';
+          onGuardado();
+        },
+        error: () => {
+          this.showLoading = false;
+          this.mensaje = '';
+          this.generalService.presentToast(
+            'Error al guardar la cotización antes de enviar sobreprecio',
+            'danger',
+          );
+        },
+      });
   }
 
   limpiarOrdenAnterior() {
@@ -1274,34 +1913,64 @@ export class EditPage implements OnInit {
 
   goListDetalleCotizacion() {
     //{ state: { item: this.cotizacion } }
-    this.router.navigate(['/menu/list-detalle-cotizacion'], {});
+    this.router.navigate(['/menu/cotizacion-edit'], { state: { flag: true } });
   }
 
-  setRequiereAprobacioPrecioCantidad() {
-    this.requiereAprobacionPrecio = false;
-    this.colorToolbar = 'primary';
-    this.solicitarPrecio = false;
-    this.mensajeBotonSolicitarPrecio = '';
-    if (this.appProduct && this.operacion !== 1) {
-      if (
-        this.newPrecioMasFlete > this.variables.precioUsd ||
-        this.appProduct.requiereEstimacion === true ||
-        this.porDebajoDeCantidadMinima === true
-      ) {
-        this.requiereAprobacionPrecio = true;
-        this.colorToolbar = 'danger';
-        this.solicitarPrecio = true;
-        this.mensajeBotonSolicitarPrecio =
-          ' Enviar Aprobación Por Precio y Salvar';
-        if (this.appProduct.requiereEstimacion === true) {
-          this.mensajeBotonSolicitarPrecio =
-            ' Enviar Aprobación Por Estimación(' +
-            this.appProduct.code +
-            ')' +
-            '  y Salvar';
-        }
-      }
-    }
+  async eliminarDetalleDesdeLista(item: AppDetailQuotesGetDto): Promise<void> {
+    const alert = await this.alertController.create({
+      cssClass: 'my-custom-class',
+      header: 'Eliminar producto',
+      message: 'Desea eliminar este producto?',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'secondary',
+        },
+        {
+          text: 'Confirmar',
+          handler: () => {
+            const deleteDto = new AppDetailQuotesDeleteDto();
+            deleteDto.id = item.id;
+            deleteDto.cotizacion = item.cotizacion;
+
+            this.showLoading = true;
+            this.mensaje = 'Eliminando producto';
+            this.cotizacionesListService
+              .DeleteDetalleCotizacion(deleteDto)
+              .pipe(takeUntil(this.destroy$))
+              .subscribe({
+                next: (result) => {
+                  this.showLoading = false;
+                  this.mensaje = '';
+                  if (result.meta.isValid) {
+                    this.removerDetalleLocal(item.id);
+                    this.refrescarDetallesDespuesDeEliminar(
+                      item.id,
+                      result.meta.message,
+                    );
+                  } else {
+                    this.generalService.presentToast(
+                      result.meta.message,
+                      'danger',
+                    );
+                  }
+                },
+                error: () => {
+                  this.showLoading = false;
+                  this.mensaje = '';
+                  this.generalService.presentToast(
+                    'Error al eliminar el producto',
+                    'danger',
+                  );
+                },
+              });
+          },
+        },
+      ],
+    });
+
+    await alert.present();
   }
 
   encontrarValorMasCercano(
@@ -1334,7 +2003,359 @@ export class EditPage implements OnInit {
     return valorMasCercano > 0 ? valorMasCercano : valores[0] || objetivo;
   }
 
+  private toNumber(value: any): number {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  }
+
+  private getPrecioMasFleteStorage(): PrecioDto | null {
+    return this.precioMasFleteStorage.get();
+  }
+
+  getPrecioMaximoMasFlete(): number {
+    const totalMaximo =
+      this.toNumber(this.precioMaximo) + this.toNumber(this.fleteMaximo);
+
+    if (totalMaximo > 0) {
+      return totalMaximo;
+    }
+
+    const precio = this.getPrecioMasFleteStorage();
+    if (this.toNumber(precio?.precioMaximoMasFlete) > 0) {
+      return this.toNumber(precio.precioMaximoMasFlete);
+    }
+
+    const itemMaximo =
+      this.toNumber(this.item?.precioMaximo) +
+      this.toNumber(this.item?.fleteMaximo);
+
+    return itemMaximo > 0 ? itemMaximo : 0;
+  }
+
+  getPrecioMaximoMasFleteMasked(): string {
+    const precioMaximoMasFlete =
+      this.detalleBusinessRules.truncarLimiteComercial(
+        this.getPrecioMaximoMasFlete(),
+      );
+
+    if (precioMaximoMasFlete <= 0) {
+      return '0';
+    }
+
+    return this.generalService.maskFloat(precioMaximoMasFlete);
+  }
+
+  private resetPrecioMasFlete(): void {
+    this.newPrecioMasFlete = 0;
+    this.flete = 0;
+    this.unitPriceBaseProduction = 0;
+    this.calculoId = 0;
+    this.precioMaximo = 0;
+    this.fleteMaximo = 0;
+    this.porcMaximoSobrePrecio = 0;
+    this.porDebajoDeCantidadMinima = false;
+  }
+
+  private aplicarPrecioMasFlete(precio: PrecioDto): void {
+    this.newPrecioMasFlete = this.detalleBusinessRules.truncarLimiteComercial(
+      precio.precioMasFlete ?? 0,
+    );
+    this.flete = precio.flete ?? 0;
+    this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
+    this.calculoId = precio.calculoId ?? 0;
+    this.precioMaximo = precio.precioMaximo ?? 0;
+    this.porcMaximoSobrePrecio = precio.porcMaximoSobrePrecio ?? 0;
+    this.fleteMaximo =
+      precio.fleteMaximo ??
+      this.detalleBusinessRules.calcularFleteMaximo({
+        precioMaximo: this.precioMaximo,
+        porcFlete: precio.porcFlete,
+        precioMaximoMasFlete: precio.precioMaximoMasFlete,
+      });
+    this.porDebajoDeCantidadMinima =
+      precio.porDebajoDeCantidadMinima ?? false;
+  }
+
+  private aplicarPrecioAprobadoEstimado(): void {
+    const valorVentaAprobarUsd =
+      this.item.statusAprobacionDto.valorVentaAprobarUsd;
+
+    this.unitPriceBaseProduction = valorVentaAprobarUsd;
+    this.newPrecioMasFlete =
+      this.detalleBusinessRules.truncarLimiteComercial(
+        valorVentaAprobarUsd,
+      );
+    this.precioMaximo = this.newPrecioMasFlete;
+    this.fleteMaximo = 0;
+  }
+
+  private getPorcFleteAplicable(): number {
+    if (this.appProduct?.porcFlete > 0) {
+      return this.appProduct.porcFlete;
+    }
+
+    return this.cotizacion?.porcFlete || 0;
+  }
+
+  private buildPrecioDto(params: Partial<PrecioDto>): PrecioDto {
+    return {
+      unitPriceBaseProduction: params.unitPriceBaseProduction ?? 0,
+      precioMasFlete: params.precioMasFlete ?? 0,
+      calculoId: params.calculoId ?? 0,
+      flete: params.flete ?? 0,
+      fleteMaximo: params.fleteMaximo,
+      porcFlete: params.porcFlete ?? 0,
+      precioMaximo: params.precioMaximo ?? 0,
+      precioMaximoMasFlete: params.precioMaximoMasFlete ?? 0,
+      precioPorRango: params.precioPorRango,
+      desde: params.desde,
+      hasta: params.hasta,
+      porcMaximoSobrePrecio:
+        params.porcMaximoSobrePrecio ??
+        this.porcMaximoSobrePrecio ??
+        this.item?.porcMaximoSobrePrecio ??
+        0,
+      porDebajoDeCantidadMinima:
+        params.porDebajoDeCantidadMinima ?? false,
+    };
+  }
+
+  private buildPrecioDtoDesdeRespuestaPrecio(
+    precioResponse: any,
+    overrides: Partial<PrecioDto> = {},
+  ): PrecioDto {
+    return this.buildPrecioDto({
+      unitPriceBaseProduction: precioResponse.precio,
+      precioMasFlete: precioResponse.precioMasFlete,
+      calculoId: precioResponse.calculoId,
+      flete: precioResponse.flete,
+      fleteMaximo: precioResponse.fleteMaximo,
+      porcFlete: precioResponse.porcFlete ?? this.cotizacion?.porcFlete,
+      precioMaximo: precioResponse.precioMaximo,
+      precioMaximoMasFlete: precioResponse.precioMaximoMasFlete,
+      precioPorRango: precioResponse.precioPorRango,
+      desde: precioResponse.desde,
+      hasta: precioResponse.hasta,
+      porcMaximoSobrePrecio: precioResponse.porcMaximoSobrePrecio,
+      porDebajoDeCantidadMinima: precioResponse.porDebajoDeCantidadMinima,
+      ...overrides,
+    });
+  }
+
+  private guardarPrecioMasFlete(precio: PrecioDto): void {
+    this.precioMasFleteStorage.set(precio);
+  }
+
+  private resetPrecioParaEstimacion(precioBaseInicial = 0, calculoId = 0): void {
+    this.unitPriceBaseProduction = precioBaseInicial;
+    this.precioMaximo = 0;
+    this.fleteMaximo = 0;
+    this.newPrecioMasFlete = 0;
+    this.calculoId = calculoId;
+    this.uiUnitPriceConverted = 0;
+  }
+
+  private estaPorDebajoDeCantidadMinima(): boolean {
+    const cantidadMinima = this.toNumber(this.appProduct?.cantidadMinima);
+    const cantidad = this.toNumber(this.form?.get('cantidad')?.value);
+
+    return cantidadMinima > 0 && cantidad > 0 && cantidad < cantidadMinima;
+  }
+
+  private tieneRespuestaCantidadMinima(precioResponse?: any): boolean {
+    return (
+      precioResponse &&
+      Object.prototype.hasOwnProperty.call(
+        precioResponse,
+        'porDebajoDeCantidadMinima',
+      )
+    );
+  }
+
+  private actualizarEstadoCantidadMinima(precioResponse?: any): boolean {
+    if (this.tieneRespuestaCantidadMinima(precioResponse)) {
+      this.porDebajoDeCantidadMinima =
+        precioResponse.porDebajoDeCantidadMinima === true;
+      return this.porDebajoDeCantidadMinima;
+    }
+
+    this.porDebajoDeCantidadMinima = this.estaPorDebajoDeCantidadMinima();
+
+    return this.porDebajoDeCantidadMinima;
+  }
+
+  private aplicarBloqueoPrecioPorCantidadMinima(calculoId = this.calculoId): void {
+    const precioVentaUsd = this.toNumber(this.form?.get('precioUsd')?.value);
+    const precioVenta = this.toNumber(this.form?.get('precio')?.value);
+
+    this.resetPrecioParaEstimacion(0, calculoId);
+    this.flete = 0;
+    this.precioPorUnidad = 0;
+
+    if (precioVentaUsd > 0) {
+      this.form.get('precioUsd')?.setValue(precioVentaUsd);
+      this.form.get('totalUsd')?.setValue(
+        precioVentaUsd * this.toNumber(this.form?.get('cantidad')?.value),
+      );
+    }
+
+    if (precioVenta > 0) {
+      this.form.get('precio')?.setValue(precioVenta);
+      this.form.get('total')?.setValue(
+        precioVenta * this.toNumber(this.form?.get('cantidad')?.value),
+      );
+    }
+  }
+
+  private aplicarPrecioEstimacion(porcFlete: number): boolean {
+    const precioEstimacion = this.toNumber(
+      this.item?.statusAprobacionDto?.precioEstimacion,
+    );
+
+    if (precioEstimacion <= 0) {
+      return false;
+    }
+
+    this.unitPriceBaseProduction = precioEstimacion;
+    this.precioMaximo = precioEstimacion;
+    this.fleteMaximo = this.detalleBusinessRules.calcularFleteMaximo({
+      precioMaximo: this.precioMaximo,
+      porcFlete,
+    });
+
+    return true;
+  }
+
+  private aplicarPrecioBaseDesdeRespuesta(precioResponse: any): void {
+    const precio = precioResponse.precio;
+
+    this.calculoId = precioResponse.calculoId;
+    this.unitPriceBaseProduction = precio;
+    this.item.unitPriceBaseProduction = precio;
+    this.precioMaximo = precioResponse.precioMaximo;
+    this.porcMaximoSobrePrecio = precioResponse.porcMaximoSobrePrecio ?? 0;
+    this.item.porcMaximoSobrePrecio = this.porcMaximoSobrePrecio;
+    this.fleteMaximo =
+      precioResponse.fleteMaximo ??
+      this.detalleBusinessRules.calcularFleteMaximo({
+        precioMaximo: this.precioMaximo,
+        porcFlete: precioResponse.porcFlete ?? this.cotizacion.porcFlete,
+        precioMaximoMasFlete: precioResponse.precioMaximoMasFlete,
+      });
+  }
+
+  private aplicarCantidadConvertidaDesdeRespuesta(
+    precioResponse: any,
+    options: {
+      soloCantidadPositiva?: boolean;
+      usarCantidadComoAlternativaSiNoExiste?: boolean;
+      aplicarConversionMillar?: boolean;
+    } = {},
+  ): void {
+    const cantidadConvertida = precioResponse.cantidadConvertida;
+    const cantidadAlternativa = precioResponse.cantidadConvertidaAlternativa;
+
+    if (!options.soloCantidadPositiva || cantidadConvertida > 0) {
+      this.form.get('cantidad').setValue(cantidadConvertida);
+    }
+
+    if (cantidadAlternativa && cantidadAlternativa > 0) {
+      this.form
+        .get('cantidadConvertidaAlternativa')
+        .setValue(cantidadAlternativa);
+    } else if (options.usarCantidadComoAlternativaSiNoExiste) {
+      this.form
+        .get('cantidadConvertidaAlternativa')
+        .setValue(cantidadConvertida);
+    }
+
+    if (
+      options.aplicarConversionMillar &&
+      this.appProduct.tipoCalculo === 4 &&
+      this.uiIdUnidad === 615
+    ) {
+      this.cantidadPorUnidadProduccion = 1000;
+      this.form
+        .get('cantidad')
+        .setValue(this.form.get('cantidadSolicitada').value / 1000);
+    }
+
+    this.item.cantidad = this.form.get('cantidad').value;
+  }
+
+  private buscarPrecioConEstado(
+    filter: any,
+    mensaje: string,
+    mostrarLoading = false,
+  ) {
+    this.buscandoPrecio = true;
+    this.showLoading = mostrarLoading ? true : this.showLoading;
+    this.mensaje = mensaje;
+
+    return this.productoService.getPrice(filter).pipe(
+      takeUntil(this.destroy$),
+      finalize(() => {
+        this.buscandoPrecio = false;
+        if (mostrarLoading) {
+          this.showLoading = false;
+        }
+        this.mensaje = '';
+      }),
+    );
+  }
+
+  private actualizarMontosPorMoneda(): void {
+    if (this.isBs === true) {
+      //COTIZACION EN BS
+      if (this.tasa > 0) {
+        this.form
+          .get('precioUsd')
+          .setValue(this.form.get('precio').value / this.tasa);
+      }
+      this.form
+        .get('total')
+        .setValue(
+          this.form.get('precio').value * this.form.get('cantidad').value,
+        );
+      this.form
+        .get('totalUsd')
+        .setValue(
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
+        );
+    }
+
+    this.isDolar = true;
+    if (this.isDolar) {
+      //COTIZACION EN DOLARES
+      this.form
+        .get('totalUsd')
+        .setValue(
+          this.form.get('precioUsd').value * this.form.get('cantidad').value,
+        );
+
+      if (this.tasa > 0) {
+        if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
+          this.ultimoPrecioUsd = this.form.get('precioUsd').value;
+          this.form
+            .get('precio')
+            .setValue(this.form.get('precioUsd').value * this.tasa);
+        }
+      }
+
+      this.form
+        .get('total')
+        .setValue(
+          this.form.get('precio').value * this.form.get('cantidad').value,
+        );
+    }
+  }
+
   setPrecioMasFlete() {
+    if (!this.tieneProductoSeleccionado()) {
+      this.resetPrecioMasFlete();
+      return;
+    }
+
     if (this.item.idEstatus >= 5) {
       ///const precio: PrecioDto = JSON.parse(precioString); s
 
@@ -1358,227 +2379,112 @@ export class EditPage implements OnInit {
       this.newPrecioMasFlete = this.unitPriceBaseProduction ?? 0;
 
       this.newPrecioMasFlete = this.newPrecioMasFlete + this.flete;
-      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
-      return;
-    }
-
-    const precioString = localStorage.getItem('precio-mas-flete');
-
-    // 1. Validar si el valor existe en localStorage
-    if (precioString === null || precioString === 'undefined') {
-      // 'undefined' string can sometimes appear if not set correctly
-      console.warn(
-        'Advertencia: "precio-mas-flete" no encontrado en localStorage.',
-      );
-
-      // Aquí puedes decidir cómo manejar la ausencia del valor:
-      // a) Asignar valores por defecto a tus propiedades:
-      this.newPrecioMasFlete = 0;
-      this.flete = 0;
-      this.unitPriceBaseProduction = 0;
-      this.calculoId = 0; // O null, dependiendo de tu lógica
-      this.precioMaximo = 0;
-      this.porDebajoDeCantidadMinima = false;
-      const precio: PrecioDto = {
-        unitPriceBaseProduction: 0,
-        precioMasFlete: 0,
-        precioMaximo: 0,
-        precioMaximoMasFlete: 0,
-        calculoId: 0,
-        flete: 0,
-        porcFlete: 0,
-        porDebajoDeCantidadMinima: false,
-      };
-
-      // b) O, podrías simplemente retornar la función para evitar ejecutar el resto del código
-      return;
-    }
-    // 2. Si el valor existe, proceder a parsearlo
-    const precio: PrecioDto = JSON.parse(precioString);
-    console.log('precio en setPrecioMasFlete', precio);
-    // Asegurarse de que el objeto 'precio' y sus propiedades no sean null/undefined
-    this.newPrecioMasFlete = precio.precioMasFlete ?? 0;
-    this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
-    this.flete = precio.flete ?? 0;
-    this.unitPriceBaseProduction = precio.unitPriceBaseProduction ?? 0;
-    this.calculoId = precio.calculoId ?? 0; // O null, si es un tipo numérico que puede ser nulo
-    this.precioMaximo = precio.precioMaximo ?? 0;
-    this.porDebajoDeCantidadMinima = precio.porDebajoDeCantidadMinima ?? false;
-    console.log('this.newPrecioMasFlete en linea 1407', this.newPrecioMasFlete);
-    if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
-      this.unitPriceBaseProduction =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
       this.newPrecioMasFlete =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
-      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2);
+        this.detalleBusinessRules.truncarLimiteComercial(
+          this.newPrecioMasFlete,
+        );
+
+      this.precioMaximo = this.item?.precioMaximo ?? 0;
+      this.fleteMaximo = this.item?.fleteMaximo ?? 0;
       return;
     }
-    console.log({
-      Producto: this.item.appProductsGetDto,
-      RequiereEstimacion: this.item.appProductsGetDto.requiereEstimacion,
-      PordebajoCAntidadMinima: this.porDebajoDeCantidadMinima,
-    });
+
+    const precio = this.getPrecioMasFleteStorage();
+    if (!precio) {
+      this.resetPrecioMasFlete();
+      return;
+    }
+
+    this.aplicarPrecioMasFlete(precio);
+    this.actualizarEstadoCantidadMinima(precio);
+    if (this.item.statusAprobacionDto.aprobado && this.item.estimada) {
+      this.aplicarPrecioAprobadoEstimado();
+      return;
+    }
+
     if (
       (this.item.appProductsGetDto &&
         this.item.appProductsGetDto.requiereEstimacion) ||
       this.porDebajoDeCantidadMinima
     ) {
-      console.log(
-        'this.newPrecioMasFlete en linea 1422',
-        this.newPrecioMasFlete,
-      );
-      this.newPrecioMasFlete = 0;
-      this.flete = 0;
-      this.unitPriceBaseProduction = 0;
-      this.calculoId = precio.calculoId ?? 0;
-      this.precioMaximo = 0;
-      console.log(
-        'this.newPrecioMasFlete en linea 1432',
-        this.newPrecioMasFlete,
-      );
+      const calculoId = this.calculoId;
+      const porDebajoDeCantidadMinima = this.porDebajoDeCantidadMinima;
+      this.resetPrecioMasFlete();
+      this.calculoId = calculoId;
+      this.porDebajoDeCantidadMinima = porDebajoDeCantidadMinima;
     }
   }
 
-  setPrecioMasFleteOriginal() {
-    const precio: PrecioDto = JSON.parse(
-      localStorage.getItem('precio-mas-flete'),
+  private resetEstadoAprobacionPrecio(): void {
+    this.requiereAprobacionPrecio = false;
+    this.colorToolbar = 'primary';
+    this.solicitarPrecio = false;
+    this.mensajeBotonSolicitarPrecio = '';
+  }
+
+  private aplicarEstadoAprobacionPrecio(
+    aprobacion: ResultadoAprobacionPrecio,
+  ): void {
+    this.requiereAprobacionPrecio = aprobacion.requiereAprobacion;
+    this.colorToolbar = aprobacion.colorToolbar;
+    this.solicitarPrecio = aprobacion.solicitarPrecio;
+    this.mensajeBotonSolicitarPrecio =
+      aprobacion.mensajeBotonSolicitarPrecio;
+  }
+
+  private getParametrosAprobacionPrecioActual(): ParametrosAprobacionPrecio {
+    return {
+      precioBaseConFlete: this.newPrecioMasFlete,
+      precioVentaUsd: this.variables.precioUsd,
+      requiereEstimacion: this.appProduct.requiereEstimacion === true,
+      porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima === true,
+      idEstatus: this.item.idEstatus,
+      aprobado: this.item.statusAprobacionDto.aprobado,
+      flagCerrado: this.item.statusAprobacionDto.flagCerrado,
+      operacion: this.operacion,
+      isBs: this.isBs === true,
+      codigoProducto: this.appProduct.code,
+    };
+  }
+
+  private tieneProductoSeleccionado(): boolean {
+    return (
+      Number(this.appProduct?.id || 0) > 0 ||
+      Number(this.uiIdProducto || 0) > 0 ||
+      !!this.form?.get('producto')?.value
     );
-
-    this.newPrecioMasFlete = precio.precioMasFlete;
-    this.flete = precio.flete;
-    this.unitPriceBaseProduction = precio.unitPriceBaseProduction;
-
-    this.calculoId = precio.calculoId;
-    if (this.item.idEstatus >= 5) {
-      this.unitPriceBaseProduction = this.item?.unitPriceBaseProduction ?? 0; // Valor por defecto 0 si es null/undefined
-      this.flete = this.item?.flete ?? 0; // Valor por defecto 0 si es null/undefined
-      this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete || 0; // Evita NaN
-      this.newPrecioMasFlete = +this.newPrecioMasFlete.toFixed(2); // Redondea a 2 decimales
-    }
-    if (
-      this.item.statusAprobacionDto.aprobado &&
-      this.item.statusAprobacionDto.flagCerrado
-    ) {
-      this.unitPriceBaseProduction =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
-      this.newPrecioMasFlete =
-        this.item.statusAprobacionDto.valorVentaAprobarUsd;
-    }
   }
+
   setColorToolbar() {
     this.concesionString = '';
     this.variables.precioUsd = this.form.get('precioUsd').value;
     this.concesion = 0;
     this.setPrecioMasFlete();
-    this.requiereAprobacionPrecio = false;
-    this.colorToolbar = 'primary';
-    this.solicitarPrecio = false;
-    this.mensajeBotonSolicitarPrecio = '';
+    this.resetEstadoAprobacionPrecio();
 
-    const lista = Number(this.newPrecioMasFlete);
-    if (lista !== 0) {
-      this.concesion = (lista - this.variables.precioUsd) / lista;
-
-      this.concesion = this.concesion * 100;
-      this.concesionString = '';
-      if (this.concesion < 0) {
-        this.concesionString =
-          '+' + Number(this.concesion.toFixed(2)) * -1 + '% de sobre margen';
-      }
-      if (this.concesion > 0) {
-        this.concesionString =
-          '-' + Number(this.concesion.toFixed(2)) + '% de descuento';
-      }
-      if (this.concesion === 0) {
-        this.concesionString = '0% de descuento';
-      }
+    if (!this.tieneProductoSeleccionado()) {
+      this.colorToolbar = 'primary';
+      return;
     }
 
-    let cantidad = this.form.get('cantidad').value;
-    if (this.appProduct.tipoCalculo === 4) {
-      cantidad = this.form.get('cantidadConvertidaAlternativa').value;
-    }
-
-    if (this.operacion === 1) {
-      //editar
-
-      if (this.item.idEstatus >= 5) {
-        this.requiereAprobacionPrecio = false;
-        this.colorToolbar = 'primary';
-        this.solicitarPrecio = false;
-        this.mensajeBotonSolicitarPrecio = '';
-        return;
-      }
-
-      if (
-        this.item.statusAprobacionDto.aprobado &&
-        this.item.statusAprobacionDto.flagCerrado
-      ) {
-        this.requiereAprobacionPrecio = false;
-        this.colorToolbar = 'success';
-        this.solicitarPrecio = false;
-        this.mensajeBotonSolicitarPrecio = '';
-      } else {
-        if (
-          this.newPrecioMasFlete > this.variables.precioUsd ||
-          this.appProduct.requiereEstimacion === true ||
-          this.porDebajoDeCantidadMinima === true
-        ) {
-          this.requiereAprobacionPrecio = true;
-          this.colorToolbar = 'danger';
-          this.solicitarPrecio = true;
-          this.mensajeBotonSolicitarPrecio =
-            'Enviar Aprobación Por Precio y Salvar';
-        } else {
-          this.requiereAprobacionPrecio = false;
-          this.colorToolbar = 'primary';
-          this.solicitarPrecio = false;
-          this.mensajeBotonSolicitarPrecio = '';
-        }
-      }
-    } else {
-      //nuevo
-      if (this.appProduct) {
-        cantidad = this.form.get('cantidad').value;
-        if (this.appProduct.tipoCalculo === 4) {
-          cantidad = this.form.get('cantidadConvertidaAlternativa').value;
-        }
-        if (
-          this.newPrecioMasFlete > this.variables.precioUsd ||
-          this.appProduct.requiereEstimacion === true ||
-          this.porDebajoDeCantidadMinima === true
-        ) {
-          this.requiereAprobacionPrecio = true;
-          this.colorToolbar = 'danger';
-          this.solicitarPrecio = true;
-          this.mensajeBotonSolicitarPrecio =
-            ' Enviar Aprobación Por Precio y Salvar';
-          if (this.appProduct.requiereEstimacion === true) {
-            this.mensajeBotonSolicitarPrecio =
-              ' Enviar Aprobación Por Estimación(' +
-              this.appProduct.code +
-              ')' +
-              '  y Salvar';
-          }
-        } else {
-          this.requiereAprobacionPrecio = false;
-          this.colorToolbar = 'primary';
-          this.solicitarPrecio = false;
-          this.mensajeBotonSolicitarPrecio = '';
-        }
-        if (this.isBs === true) {
-          this.requiereAprobacionPrecio = true;
-          this.colorToolbar = 'danger';
-          this.solicitarPrecio = true;
-          this.mensajeBotonSolicitarPrecio =
-            ' Enviar Aprobación Por Precio y Salvar';
-        }
-      }
-    }
+    const estadoPrecio = this.detalleBusinessRules.evaluarEstadoPrecio(
+      this.getParametrosAprobacionPrecioActual(),
+    );
+    this.concesion = estadoPrecio.concesion.porcentaje;
+    this.concesionString = estadoPrecio.concesion.texto;
+    this.aplicarEstadoAprobacionPrecio(estadoPrecio.aprobacion);
   }
 
   //Buscador de productos OK
   async onBuscarProductoGeneral() {
+    if (this.operacion === 1) {
+      this.generalService.presentToast(
+        'Para cambiar el producto, elimine este ítem y agregue uno nuevo.',
+        'warning',
+      );
+      return;
+    }
+
     const modal = await this.modalCtrl.create({
       component: BuscadorProductosComponent,
       componentProps: {
@@ -1608,7 +2514,7 @@ export class EditPage implements OnInit {
 
       this.item.appProductsGetDto = this.appProduct;
       this.uiIdProducto = data.id;
-      this.uiImageLink = data.link;
+      this.uiImageLink = data.link || this.generalService.noImageUrl();
       this.uiNombreProductoInCard =
         this.appProduct.description1 + ' ' + this.appProduct.description2;
       this.btnUmDisabled = false;
@@ -1617,10 +2523,9 @@ export class EditPage implements OnInit {
       this.dtoCalculadora.appProductId = data.id;
       this.dtoCalculadora.appUnitIdUntil = data.idUnidadMedida;
 
-      this.appPriceDto = data.appPriceDto;
       this.requiereDatosEntrada = data.requiereDatosEntrada;
 
-      if (this.appProduct != null && !this.requiereDatosEntrada) {
+      if (this.appProduct && !this.requiereDatosEntrada) {
         this.form.get('medidaBasica').setValue(0);
         this.form.get('medidaOpuesta').setValue(0);
       }
@@ -1638,33 +2543,23 @@ export class EditPage implements OnInit {
       //this.appProductConversionGetDto=null;
       //this.descripcionSalesUnit = '';
       //this.uiIdUnidad = 0;
-      let cantidadBuscarPrecio = 0;
-      if (this.form.get('cantidad').value > 0) {
-        cantidadBuscarPrecio = this.form.get('cantidad').value;
-      } else {
-        cantidadBuscarPrecio = 1;
+      this.resetPrecioMasFlete();
+      if (this.tieneCantidadSolicitada()) {
+        this.onRecalcular('seleccion-producto-con-entradas');
       }
-
-      const precio = this.buscarPrecioPorRango(
-        this.appPriceDto,
-        cantidadBuscarPrecio,
-      );
-
-      this.item.unitPriceBaseProduction = precio;
-      this.unitPriceBaseProduction = precio;
-
-      if (this.cotizacion.porcFlete > 0) {
-        this.flete =
-          (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
-      }
-
-      //this.precioMasFlete = this.unitPriceBaseProduction + this.flete;
-      //this.precioMasFlete = this.precioMasFlete.toFixed(2);
     }
   }
 
   //Buscador de productos OK
   async onBuscarProducto() {
+    if (this.operacion === 1) {
+      this.generalService.presentToast(
+        'Para cambiar el producto, elimine este ítem y agregue uno nuevo.',
+        'warning',
+      );
+      return;
+    }
+
     const modal = await this.modalCtrl.create({
       component: BuscadorProductosPage,
       cssClass: 'modal-amplio',
@@ -1698,7 +2593,7 @@ export class EditPage implements OnInit {
 
       this.item.appProductsGetDto = this.appProduct;
       this.uiIdProducto = data.id;
-      this.uiImageLink = data.link;
+      this.uiImageLink = data.link || this.generalService.noImageUrl();
       this.uiNombreProductoInCard =
         this.appProduct.description1 + ' ' + this.appProduct.description2;
       this.btnUmDisabled = false;
@@ -1707,10 +2602,9 @@ export class EditPage implements OnInit {
       this.dtoCalculadora.appProductId = data.id;
       this.dtoCalculadora.appUnitIdUntil = data.idUnidadMedida;
 
-      this.appPriceDto = data.appPriceDto;
       this.requiereDatosEntrada = data.requiereDatosEntrada;
 
-      if (this.appProduct != null && !this.requiereDatosEntrada) {
+      if (this.appProduct && !this.requiereDatosEntrada) {
         this.form.get('medidaBasica').setValue(0);
         this.form.get('medidaOpuesta').setValue(0);
       }
@@ -1725,30 +2619,10 @@ export class EditPage implements OnInit {
       this.descripcionSalesUnit =
         this.appProductConversionGetDto.appUnitsAlternativaDescription;
 
-      //Verifico si el id de producto seleccionado ya existe en el array de detalle cotizaciones
-      //caso +, asigno dicho elemento a this.item y es todo
-      if (
-        !this.requiereDatosEntrada &&
-        this.appPriceDto != null &&
-        this.appPriceDto.length > 0
-      ) {
-        const precio = this.buscarPrecioPorRango(
-          this.appPriceDto,
-          this.form.get('cantidad').value,
-        );
-
-        this.item.unitPriceBaseProduction = precio;
-        this.unitPriceBaseProduction = precio;
+      this.resetPrecioMasFlete();
+      if (this.tieneCantidadSolicitada()) {
+        this.onRecalcular('seleccion-producto');
       }
-
-      if (this.cotizacion.porcFlete > 0) {
-        this.flete =
-          (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
-      }
-
-      this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete;
-
-      //'onBuscarProducto');
     }
   }
 
@@ -1837,8 +2711,6 @@ export class EditPage implements OnInit {
   };
 
   setCantidad() {
-    let result: number;
-
     const calculoConversion = this.calculaConversion(
       this.form.get('cantidadSolicitada').value,
       this.form.get('medidaBasica').value,
@@ -1852,14 +2724,13 @@ export class EditPage implements OnInit {
       const cantidad =
         this.form.get('cantidadSolicitada').value /
         this.cantidadPorUnidadProduccion;
-      result = cantidad;
-      return result;
-    } else {
-      return 0;
+      return cantidad;
     }
+
+    return 0;
   }
 
-  async recalculoPrecioPorProductoCantidadLargoAncho() {
+  recalculoPrecioPorProductoCantidadLargoAncho() {
     this.form.get('cantidad').setValue(0);
 
     const filter = {
@@ -1874,375 +2745,65 @@ export class EditPage implements OnInit {
       ordenAnterior: this.form.get('ordenAnterior').value,
     };
 
-    this.buscandoPrecio = true;
-    this.mensaje = 'Buscando precio........';
-    await this.productoService.getPrice(filter).subscribe((resp) => {
-      this.buscandoPrecio = false;
-      this.mensaje = '';
+    this.buscarPrecioConEstado(filter, 'Buscando precio........').subscribe(
+      (resp) => {
+        const precioDto = this.buildPrecioDtoDesdeRespuestaPrecio(resp.data);
+        this.guardarPrecioMasFlete(precioDto);
 
-      var precioDto: PrecioDto = {
-        unitPriceBaseProduction: resp.data.precio,
-        precioMasFlete: resp.data.precioMasFlete,
-        calculoId: resp.data.calculoId,
-        flete: resp.data.flete,
-        porcFlete: resp.data.porcFlete,
-        precioMaximo: resp.data.precioMaximo,
-        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
-        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
-      };
-      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+        this.aplicarPrecioBaseDesdeRespuesta(resp.data);
+        this.newPrecioMasFlete =
+          this.detalleBusinessRules.truncarLimiteComercial(
+            resp.data.precioMasFlete,
+          );
+        this.porDebajoDeCantidadMinima = resp.data.porDebajoDeCantidadMinima;
 
-      this.calculoId = resp.data.calculoId;
+        if (
+          this.appProduct.requiereEstimacion === true ||
+          resp.data.porDebajoDeCantidadMinima === true
+        ) {
+          this.resetPrecioParaEstimacion(0.00000000001);
+          this.precioPorUnidad = 0;
+          this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
+          this.aplicarPrecioEstimacion(
+            resp.data.porcFlete ?? this.cotizacion.porcFlete,
+          );
+        } else {
+          this.flete = resp.data.flete;
+          this.newPrecioMasFlete =
+            this.detalleBusinessRules.truncarLimiteComercial(
+              resp.data.precioMasFlete,
+            );
 
-      this.unitPriceBaseProduction = resp.data.precio;
-      this.item.unitPriceBaseProduction = resp.data.precio;
-      this.precioMaximo = resp.data.precioMaximo;
-      this.newPrecioMasFlete = resp.data.precioMasFlete;
-      this.porDebajoDeCantidadMinima = resp.data.porDebajoDeCantidadMinima;
-
-      if (
-        this.appProduct.requiereEstimacion === true ||
-        resp.data.porDebajoDeCantidadMinima === true
-      ) {
-        this.unitPriceBaseProduction = 0.00000000001;
-        this.precioMaximo = 0;
-        this.newPrecioMasFlete = 0;
-        this.calculoId = 0;
-        this.uiUnitPriceConverted = 0;
-        this.precioPorUnidad = 0;
-        this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
-
-        if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-          this.unitPriceBaseProduction =
-            this.item.statusAprobacionDto.precioEstimacion;
-          this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
+          this.uiUnitPriceConverted =
+            this.newPrecioMasFlete / this.form.get('cantidad').value;
+          //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
+          this.precioPorUnidad = resp.data.precioPorUnidad;
+          this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
         }
-      } else {
-        this.flete = resp.data.flete;
-        this.newPrecioMasFlete = resp.data.precioMasFlete;
+        this.aplicarCantidadConvertidaDesdeRespuesta(resp.data, {
+          aplicarConversionMillar: true,
+        });
+        this.actualizarEstadoCantidadMinima(resp.data);
 
-        this.uiUnitPriceConverted =
-          this.newPrecioMasFlete / this.form.get('cantidad').value;
-        //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
-        this.precioPorUnidad = resp.data.precioPorUnidad;
-        this.cantidadPorUnidad = resp.data.cantidadPorUnidad;
-      }
-      this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
-      if (resp.data.cantidadConvertidaAlternativa) {
-        this.form
-          .get('cantidadConvertidaAlternativa')
-          .setValue(resp.data.cantidadConvertidaAlternativa);
-      }
-      this.item.cantidad = this.form.get('cantidad').value;
+        if (this.porDebajoDeCantidadMinima) {
+          this.aplicarBloqueoPrecioPorCantidadMinima(resp.data.calculoId);
+        }
 
-      this.form.get('precio').setValue(this.newPrecioMasFlete);
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-
-      if (this.isBs === true) {
-        //COTIZACION EN BS
-        if (this.tasa > 0) {
+        if (!this.porDebajoDeCantidadMinima) {
+          this.form.get('precio').setValue(this.newPrecioMasFlete);
           this.form
-            .get('precioUsd')
-            .setValue(this.form.get('precio').value / this.tasa);
-        }
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-      }
-      this.isDolar = true;
-      if (this.isDolar) {
-        //COTIZACION EN DOLARES
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-
-        if (this.tasa > 0) {
-          if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-            this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-            this.form
-              .get('precio')
-              .setValue(this.form.get('precioUsd').value * this.tasa);
-          }
+            .get('total')
+            .setValue(
+              this.form.get('precio').value * this.form.get('cantidad').value,
+            );
         }
 
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-      }
-      this.setColorToolbar();
-      this.mensaje = '';
-    });
-  }
-  recalculoRequiereEntradaLargoAncho() {
-    this.mensaje =
-      'Buscando precio em recalculoRequiereEntradaLargoAncho........';
-    if (this.appProduct.tipoCalculo === 1) {
-      const calculoConversion = this.calculaConversion(
-        this.form.get('cantidadSolicitada').value,
-        this.form.get('medidaBasica').value,
-        this.form.get('medidaOpuesta').value,
-      );
-
-      this.cantidadPorUnidadProduccion = calculoConversion.resulCantidad;
-      this.item.valorConvertido = calculoConversion.area;
-    }
-    let porrcentajeAprovechamiento = 0;
-    porrcentajeAprovechamiento =
-      this.cantidadPorUnidadProduccion * this.item.valorConvertido;
-    //cantidad = (this.form.get('cantidadSolicitada').value / this.cantidadPorUnidadProduccion) / porrcentajeAprovechamiento;
-
-    this.form
-      .get('cantidad')
-      .setValue(
-        this.form.get('cantidadSolicitada').value /
-          this.cantidadPorUnidadProduccion,
-      );
-
-    /* if (this.dtoCalculadora.appUnitIdUntil == this.dtoCalculadora.appUnitIdSince) {
-            this.form.get('cantidad').setValue(this.form.get('cantidadSolicitada').value);
-        } */
-
-    this.item.cantidad = this.form.get('cantidad').value;
-
-    const align = 'left';
-    this.optionsMask = {
-      prefix: '',
-      thousands: '.',
-      decimal: ',',
-      align,
-      precision: this.decimalCount(this.form.get('cantidad').value),
-    };
-    const longitud = this.decimalCount(this.form.get('cantidad').value);
-    this.longituDecimal = longitud.toString();
-
-    if (
-      this.requiereDatosEntrada &&
-      this.appPriceDto != null &&
-      this.appPriceDto.length > 0
-    ) {
-      const precio = this.buscarPrecioPorRango(
-        this.appPriceDto,
-        this.form.get('cantidad').value,
-      );
-      this.item.unitPriceBaseProduction = precio;
-      this.unitPriceBaseProduction = precio;
-    }
-    if (this.appProduct.requiereEstimacion === true) {
-      this.unitPriceBaseProduction = 0;
-      this.precioMaximo = 0;
-      if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-        this.unitPriceBaseProduction =
-          this.item.statusAprobacionDto.precioEstimacion;
-        this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
-      }
-    }
-    if (this.cotizacion.porcFlete > 0) {
-      this.flete =
-        (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
-    }
-
-    var precioDto: PrecioDto = {
-      unitPriceBaseProduction: this.unitPriceBaseProduction,
-      precioMasFlete: this.unitPriceBaseProduction + this.flete,
-      calculoId: 0,
-      flete: this.flete,
-      porcFlete: this.cotizacion.porcFlete,
-      precioMaximo: this.precioMaximo,
-      precioMaximoMasFlete: this.precioMaximo + this.flete,
-      porDebajoDeCantidadMinima: false,
-    };
-    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
-
-    this.uiUnitPriceConverted =
-      this.newPrecioMasFlete / this.cantidadPorUnidadProduccion;
-
-    if (this.isBs === true) {
-      //COTIZACION EN BS
-      if (this.tasa > 0) {
-        this.form
-          .get('precioUsd')
-          .setValue(this.form.get('precio').value / this.tasa);
-      }
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-      this.form
-        .get('totalUsd')
-        .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value,
-        );
-    }
-    this.isDolar = true;
-    if (this.isDolar) {
-      //COTIZACION EN DOLARES
-
-      this.form
-        .get('totalUsd')
-        .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value,
-        );
-
-      if (this.tasa > 0) {
-        if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-          this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-          this.form
-            .get('precio')
-            .setValue(this.form.get('precioUsd').value * this.tasa);
-        }
-      }
-
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-    }
-    this.mensaje = '';
-    //this.setColorToolbar();
-  }
-  recalculoPorRango() {
-    this.mensaje = 'Buscando precio por rango ***........ Linea 2164';
-    console.log(this.mensaje);
-    const cantidad = this.calculoConversionGenerico(
-      this.appProductConversionGetDto,
-      this.form.get('cantidadSolicitada').value,
+        this.actualizarMontosPorMoneda();
+        this.setColorToolbar();
+      },
     );
-
-    this.form.get('cantidad').setValue(cantidad);
-    this.cantidadPorUnidadProduccion = cantidad;
-    this.item.valorConvertido = this.appProductConversionGetDto.yDenominador;
-
-    const align = 'left';
-    this.optionsMask = {
-      prefix: '',
-      thousands: '.',
-      decimal: ',',
-      align,
-      precision: this.decimalCount(this.cantidadPorUnidadProduccion),
-    };
-    const longitud = this.decimalCount(this.form.get('cantidad').value);
-    this.longituDecimal = longitud.toString();
-
-    const precio = this.buscarPrecioPorRango(
-      this.appPriceDto,
-      this.form.get('cantidad').value,
-    );
-    this.precioMaximo = this.buscarPrecioMaximoPorRango(
-      this.appPriceDto,
-      this.form.get('cantidad').value,
-    );
-
-    this.item.unitPriceBaseProduction =
-      precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
-
-    this.unitPriceBaseProduction =
-      precio + (precio * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
-
-    this.precioMaximo =
-      this.precioMaximo +
-      (this.precioMaximo * this.condicionPagoDto.pocGapAplicarPrecio) / 100;
-
-    if (this.appProduct.requiereEstimacion === true) {
-      this.unitPriceBaseProduction = 0;
-      this.precioMaximo = 0;
-      if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-        this.unitPriceBaseProduction =
-          this.item.statusAprobacionDto.precioEstimacion;
-        this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
-      }
-    }
-
-    let porcFlete = 0;
-    porcFlete = this.cotizacion.porcFlete;
-    if (this.appProduct.porcFlete > 0) {
-      porcFlete = this.appProduct.porcFlete;
-    }
-    console.log('appProduct', this.appProduct);
-    console.log('porcFlete cotizacion', this.cotizacion.porcFlete);
-    console.log('porcFlete Producto', this.appProduct.porcFlete);
-    console.log('porcFlete', porcFlete);
-    this.flete = (this.unitPriceBaseProduction * porcFlete) / 100;
-
-    this.newPrecioMasFlete = this.unitPriceBaseProduction + this.flete;
-    var precioDto: PrecioDto = {
-      unitPriceBaseProduction: this.unitPriceBaseProduction,
-      precioMasFlete: this.newPrecioMasFlete,
-      calculoId: 0,
-      flete: this.flete,
-      porcFlete: porcFlete,
-      precioMaximo: this.precioMaximo,
-      precioMaximoMasFlete: this.precioMaximo + this.flete,
-      porDebajoDeCantidadMinima: false,
-    };
-    localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
-
-    this.uiUnitPriceConverted =
-      this.newPrecioMasFlete / this.cantidadPorUnidadProduccion;
-
-    if (this.isBs === true) {
-      //COTIZACION EN BS
-      if (this.tasa > 0) {
-        this.form
-          .get('precioUsd')
-          .setValue(this.form.get('precio').value / this.tasa);
-      }
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-      this.form
-        .get('totalUsd')
-        .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value,
-        );
-    }
-    this.isDolar = true;
-    if (this.isDolar) {
-      //COTIZACION EN DOLARES
-
-      this.form
-        .get('totalUsd')
-        .setValue(
-          this.form.get('precioUsd').value * this.form.get('cantidad').value,
-        );
-      if (this.tasa > 0) {
-        if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-          this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-          this.form
-            .get('precio')
-            .setValue(this.form.get('precioUsd').value * this.tasa);
-        }
-      }
-
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-    }
-    this.mensaje = '';
-    this.setColorToolbar();
   }
-
-  async recalculoPrecioPorProductoCantidad() {
+  recalculoPrecioPorProductoCantidad() {
     const cantidad = this.calculoConversionGenerico(
       this.appProductConversionGetDto,
       this.form.get('cantidadSolicitada').value,
@@ -2269,6 +2830,7 @@ export class EditPage implements OnInit {
       appDetailQuotesId: this.item.id,
       unidadId: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
+      ordenAnterior: this.form.get('ordenAnterior').value,
     };*/
 
     const filter = {
@@ -2280,135 +2842,56 @@ export class EditPage implements OnInit {
       appDetailQuotesId: this.item.id,
       unidadId: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
+      ordenAnterior: this.form.get('ordenAnterior').value,
     };
 
-    this.buscandoPrecio = true;
-    this.showLoading = true;
-    this.mensaje = 'Buscando precio ........';
+    this.buscarPrecioConEstado(filter, 'Buscando precio ........', true).subscribe(
+      (resp) => {
+        const calculoIdResponse = resp.data.calculoId || 0;
 
-    await this.productoService.getPrice(filter).subscribe((resp) => {
-      this.buscandoPrecio = false;
-      this.showLoading = false;
-      this.mensaje = '';
+        const precioDto = this.buildPrecioDtoDesdeRespuestaPrecio(resp.data, {
+          calculoId: calculoIdResponse,
+        });
+        this.aplicarPrecioMasFlete(precioDto);
+        this.item.unitPriceBaseProduction = this.unitPriceBaseProduction;
+        this.item.porcMaximoSobrePrecio = this.porcMaximoSobrePrecio;
+        this.guardarPrecioMasFlete(precioDto);
 
-      this.calculoId = resp.data.calculoId;
-      const precio = resp.data.precio;
-      this.unitPriceBaseProduction = precio;
-      this.precioMaximo = resp.data.precioMaximo;
-      this.item.unitPriceBaseProduction = precio;
-      this.flete = resp.data.flete;
-      let calculoIdResponse = 0;
-      if (resp.data.calculoId) {
-        calculoIdResponse = resp.data.calculoId;
-      }
+        if (
+          this.appProduct.requiereEstimacion === true ||
+          resp.data.porDebajoDeCantidadMinima
+        ) {
+          this.resetPrecioParaEstimacion();
+          if (this.aplicarPrecioEstimacion(this.cotizacion.porcFlete)) {
+            this.flete =
+              (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
 
-      var precioDto: PrecioDto = {
-        unitPriceBaseProduction: resp.data.precio,
-        precioMasFlete: resp.data.precioMasFlete,
-        calculoId: calculoIdResponse,
-        flete: resp.data.flete,
-        porcFlete: this.cotizacion.porcFlete,
-        precioMaximo: resp.data.precioMaximo,
-        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
-        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
-      };
-      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
-
-      if (
-        this.appProduct.requiereEstimacion === true ||
-        resp.data.porDebajoDeCantidadMinima
-      ) {
-        this.unitPriceBaseProduction = 0;
-        this.precioMaximo = 0;
-        this.newPrecioMasFlete = 0;
-        this.calculoId = 0;
-        this.uiUnitPriceConverted = 0;
-        if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-          this.unitPriceBaseProduction =
-            this.item.statusAprobacionDto.precioEstimacion;
-          this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
-          this.flete =
-            (this.unitPriceBaseProduction * this.cotizacion.porcFlete) / 100;
-
-          var precioDto: PrecioDto = {
-            unitPriceBaseProduction: resp.data.precio,
-            precioMasFlete: resp.data.precioMasFlete,
-            calculoId: resp.data.calculoId,
-            flete: resp.data.flete,
-            porcFlete: this.cotizacion.porcFlete,
-            precioMaximo: resp.data.precioMaximo,
-            precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
-            porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
-          };
-          localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
-        }
-      }
-
-      if (resp.data.cantidadConvertida > 0) {
-        this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
-        this.item.cantidad = this.form.get('cantidad').value;
-      }
-      if (
-        resp.data.cantidadConvertidaAlternativa &&
-        resp.data.cantidadConvertidaAlternativa > 0
-      ) {
-        this.form
-          .get('cantidadConvertidaAlternativa')
-          .setValue(resp.data.cantidadConvertidaAlternativa);
-      } else {
-        this.form
-          .get('cantidadConvertidaAlternativa')
-          .setValue(resp.data.cantidadConvertida);
-      }
-
-      if (this.isBs === true) {
-        //COTIZACION EN BS
-        if (this.tasa > 0) {
-          this.form
-            .get('precioUsd')
-            .setValue(this.form.get('precio').value / this.tasa);
-        }
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-      }
-      this.isDolar = true;
-      if (this.isDolar) {
-        //COTIZACION EN DOLARES
-
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-        if (this.tasa > 0) {
-          if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-            this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-            this.form
-              .get('precio')
-              .setValue(this.form.get('precioUsd').value * this.tasa);
+            const precioEstimacionDto =
+              this.buildPrecioDtoDesdeRespuestaPrecio(resp.data, {
+                porcFlete: this.cotizacion.porcFlete,
+              });
+            this.guardarPrecioMasFlete(precioEstimacionDto);
           }
         }
 
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-      }
+        this.aplicarCantidadConvertidaDesdeRespuesta(resp.data, {
+          soloCantidadPositiva: true,
+          usarCantidadComoAlternativaSiNoExiste: true,
+        });
+        this.actualizarEstadoCantidadMinima(resp.data);
 
-      this.setColorToolbar();
-    });
+        if (this.porDebajoDeCantidadMinima) {
+          this.aplicarBloqueoPrecioPorCantidadMinima(calculoIdResponse);
+        }
+
+        this.actualizarMontosPorMoneda();
+
+        this.setColorToolbar();
+      },
+    );
   }
 
-  async recalculoPrecioPorProductoCantidadRollo() {
+  recalculoPrecioPorProductoCantidadRollo() {
     this.form.get('cantidad').setValue(0);
 
     const filter = {
@@ -2416,34 +2899,20 @@ export class EditPage implements OnInit {
       appProuctId: this.appProduct.id,
       cantidad: this.form.get('cantidadSolicitada').value,
       appDetailQuotesId: this.item.id,
-      unidad: this.uiIdUnidad,
+      unidadId: this.uiIdUnidad,
       condicionDePago: this.form.get('condicionPago').value,
+      ordenAnterior: this.form.get('ordenAnterior').value,
     };
 
-    this.buscandoPrecio = true;
-    this.mensaje = 'Buscando precio por rollo........';
-    await this.productoService.getPrice(filter).subscribe((resp) => {
-      this.buscandoPrecio = false;
-      this.mensaje = '';
-
-      this.calculoId = resp.data.calculoId;
-      const precio = resp.data.precio;
-      this.unitPriceBaseProduction = precio;
-      this.precioMaximo = resp.data.precioMaximo;
-      this.item.unitPriceBaseProduction = precio;
-      this.flete = resp.data.flete;
-
-      var precioDto: PrecioDto = {
-        unitPriceBaseProduction: resp.data.precio,
-        precioMasFlete: resp.data.precioMasFlete,
-        calculoId: resp.data.calculoId,
-        flete: resp.data.flete,
-        porcFlete: this.cotizacion.porcFlete,
-        precioMaximo: resp.data.precioMaximo,
-        precioMaximoMasFlete: resp.data.precioMaximoMasFlete,
-        porDebajoDeCantidadMinima: resp.data.porDebajoDeCantidadMinima,
-      };
-      localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+    this.buscarPrecioConEstado(
+      filter,
+      'Buscando precio por rollo........',
+    ).subscribe((resp) => {
+      const precioDto = this.buildPrecioDtoDesdeRespuestaPrecio(resp.data);
+      this.aplicarPrecioMasFlete(precioDto);
+      this.item.unitPriceBaseProduction = this.unitPriceBaseProduction;
+      this.item.porcMaximoSobrePrecio = this.porcMaximoSobrePrecio;
+      this.guardarPrecioMasFlete(precioDto);
 
       this.porDebajoDeCantidadMinima = resp.data.porDebajoDeCantidadMinima;
       if (
@@ -2452,9 +2921,10 @@ export class EditPage implements OnInit {
       ) {
         this.unitPriceBaseProduction = 0;
         this.precioMaximo = 0;
+        this.fleteMaximo = 0;
         this.flete = 0;
 
-        var precioDto: PrecioDto = {
+        const precioSinEstimacionDto = this.buildPrecioDto({
           unitPriceBaseProduction: 0,
           precioMasFlete: 0,
           calculoId: resp.data.calculoId,
@@ -2463,139 +2933,84 @@ export class EditPage implements OnInit {
           precioMaximo: 0,
           precioMaximoMasFlete: 0,
           porDebajoDeCantidadMinima: this.porDebajoDeCantidadMinima,
-        };
-        localStorage.setItem('precio-mas-flete', JSON.stringify(precioDto));
+        });
+        this.guardarPrecioMasFlete(precioSinEstimacionDto);
 
-        this.calculoId = resp.data.calculoId;
-        this.uiUnitPriceConverted = 0;
+        this.resetPrecioParaEstimacion(0, resp.data.calculoId);
         this.precioPorUnidad = 0;
-        if (this.item.statusAprobacionDto.precioEstimacion > 0) {
-          this.unitPriceBaseProduction =
-            this.item.statusAprobacionDto.precioEstimacion;
-          this.precioMaximo = this.item.statusAprobacionDto.precioEstimacion;
-        }
+        this.aplicarPrecioEstimacion(this.cotizacion.porcFlete);
       }
 
-      this.form.get('cantidad').setValue(resp.data.cantidadConvertida);
-      if (
-        resp.data.cantidadConvertidaAlternativa &&
-        resp.data.cantidadConvertidaAlternativa > 0
-      ) {
+      this.aplicarCantidadConvertidaDesdeRespuesta(resp.data);
+      this.actualizarEstadoCantidadMinima(resp.data);
+
+      if (this.porDebajoDeCantidadMinima) {
+        this.aplicarBloqueoPrecioPorCantidadMinima(resp.data.calculoId);
+      }
+
+      if (!this.porDebajoDeCantidadMinima) {
+        this.form.get('precio').setValue(this.newPrecioMasFlete);
         this.form
-          .get('cantidadConvertidaAlternativa')
-          .setValue(resp.data.cantidadConvertidaAlternativa);
+          .get('total')
+          .setValue(
+            this.form.get('precio').value * this.form.get('cantidad').value,
+          );
       }
-      this.item.cantidad = this.form.get('cantidad').value;
-
-      this.form.get('precio').setValue(this.newPrecioMasFlete);
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
       this.uiUnitPriceConverted =
         this.newPrecioMasFlete / this.form.get('cantidad').value;
       //this.uiUnitPriceConverted = this.precioMasFlete /  this.cantidadPorUnidadProduccion;
-      if (this.isBs === true) {
-        //COTIZACION EN BS
-        if (this.tasa > 0) {
-          this.form
-            .get('precioUsd')
-            .setValue(this.form.get('precio').value / this.tasa);
-        }
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-      }
-      this.isDolar = true;
-      if (this.isDolar) {
-        //COTIZACION EN DOLARES
-        this.form
-          .get('totalUsd')
-          .setValue(
-            this.form.get('precioUsd').value * this.form.get('cantidad').value,
-          );
-
-        if (this.tasa > 0) {
-          if (this.ultimoPrecioUsd !== this.form.get('precioUsd').value) {
-            this.ultimoPrecioUsd = this.form.get('precioUsd').value;
-            this.form
-              .get('precio')
-              .setValue(this.form.get('precioUsd').value * this.tasa);
-          }
-        }
-
-        this.form
-          .get('total')
-          .setValue(
-            this.form.get('precio').value * this.form.get('cantidad').value,
-          );
-      }
-      this.mensaje = '';
+      this.actualizarMontosPorMoneda();
       this.setColorToolbar();
     });
   }
 
   calculaTotalVenta(precioRecibido: number) {
-    if (this.isBs === true) {
-      //COTIZACION EN BS
-      if (this.tasa > 0) {
-        this.form
-          .get('precioUsd')
-          .setValue(this.form.get('precio').value / this.tasa);
-      }
-      this.form
-        .get('total')
-        .setValue(
-          this.form.get('precio').value * this.form.get('cantidad').value,
-        );
-      this.form
-        .get('totalUsd')
-        .setValue(precioRecibido * this.form.get('cantidad').value);
-    }
-    this.isDolar = true;
-    if (this.isDolar) {
-      //COTIZACION EN DOLARES
+    const totalVenta = this.detalleBusinessRules.calcularTotalVenta({
+      precioUsd: precioRecibido,
+      cantidad: this.form.get('cantidad').value,
+      cantidadSolicitada: this.form.get('cantidadSolicitada').value,
+      tasa: this.tasa,
+      ultimoPrecioUsd: this.ultimoPrecioUsd,
+      tipoCalculo: this.appProduct?.tipoCalculo,
+      idUnidad: this.uiIdUnidad,
+    });
 
-      this.form
-        .get('totalUsd')
-        .setValue(precioRecibido * this.form.get('cantidad').value);
-      if (this.tasa > 0) {
-        if (this.ultimoPrecioUsd !== precioRecibido) {
-          this.ultimoPrecioUsd = precioRecibido;
-          this.form.get('precio').setValue(precioRecibido * this.tasa);
-        }
-      }
-
-      this.form
-        .get('total')
-        .setValue(precioRecibido * this.tasa * this.form.get('cantidad').value);
-      this.form
-        .get('totalUsd')
-        .setValue(precioRecibido * this.form.get('cantidad').value);
+    if (totalVenta.actualizarPrecio) {
+      this.ultimoPrecioUsd = totalVenta.ultimoPrecioUsd;
+      this.form.get('precio').setValue(totalVenta.precio);
     }
+
+    this.form.get('cantidad').setValue(totalVenta.cantidad);
+    this.form.get('total').setValue(totalVenta.total);
+    this.form.get('totalUsd').setValue(totalVenta.totalUsd);
   }
   //------------------------------------
-  async onRecalcular(origenLlamada: string) {
-    if (this.appProduct != null) {
+  private resetCantidadesCalculadas(): void {
+    this.form.get('cantidad').setValue(0);
+    this.form.get('cantidadConvertidaAlternativa').setValue(0);
+  }
+
+  private tieneCantidadSolicitada(): boolean {
+    return this.form.get('cantidadSolicitada').value > 0;
+  }
+
+  private tieneMedidasYCantidad(): boolean {
+    return (
+      this.form.get('medidaBasica').value > 0 &&
+      this.form.get('medidaOpuesta').value > 0 &&
+      this.tieneCantidadSolicitada()
+    );
+  }
+
+  onRecalcular(origenLlamada: string) {
+    if (this.appProduct) {
+      this.resetCantidadesCalculadas();
+
       switch (this.appProduct.tipoCalculo) {
         //RequiereEntradaLargoAncho=1
         case 1:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (
-            this.form.get('medidaBasica').value > 0 &&
-            this.form.get('medidaOpuesta').value > 0 &&
-            this.form.get('cantidadSolicitada').value > 0
-          ) {
-            this.recalculoRequiereEntradaLargoAncho();
+          if (this.tieneMedidasYCantidad()) {
+            this.recalculoPrecioPorProductoCantidadLargoAncho();
             this.setColorToolbar();
           }
 
@@ -2603,63 +3018,42 @@ export class EditPage implements OnInit {
         //PrecioPorProducto
 
         case 2:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (this.form.get('cantidadSolicitada').value > 0) {
-            this.recalculoPorRango();
+          if (this.tieneCantidadSolicitada()) {
+            this.recalculoPrecioPorProductoCantidad();
           }
 
           break;
 
         //PrecioPorProductoCantidad
         case 3:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (this.form.get('cantidadSolicitada').value > 0) {
+          if (this.tieneCantidadSolicitada()) {
             this.recalculoPrecioPorProductoCantidad();
             this.setColorToolbar();
           }
 
           break;
         case 4:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-
-          if (
-            this.form.get('medidaBasica').value > 0 &&
-            this.form.get('medidaOpuesta').value > 0 &&
-            this.form.get('cantidadSolicitada').value > 0
-          ) {
+          if (this.tieneMedidasYCantidad()) {
             this.recalculoPrecioPorProductoCantidadLargoAncho();
             this.setColorToolbar();
           }
 
           break;
         case 12:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (this.form.get('cantidadSolicitada').value > 0) {
+          if (this.tieneCantidadSolicitada()) {
             this.recalculoPrecioPorProductoCantidad();
             this.setColorToolbar();
           }
           break;
         case 5:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (this.form.get('cantidadSolicitada').value > 0) {
+          if (this.tieneCantidadSolicitada()) {
             this.recalculoPrecioPorProductoCantidadRollo();
           }
 
           break;
         //ETTIQUETAS PRIME
         case 6:
-          this.form.get('cantidad').setValue(0);
-          this.form.get('cantidadConvertidaAlternativa').setValue(0);
-          if (
-            this.form.get('medidaBasica').value > 0 &&
-            this.form.get('medidaOpuesta').value > 0 &&
-            this.form.get('cantidadSolicitada').value > 0
-          ) {
+          if (this.tieneMedidasYCantidad()) {
             this.recalculoPrecioPorProductoCantidadLargoAncho();
             this.setColorToolbar();
           }
@@ -2669,59 +3063,6 @@ export class EditPage implements OnInit {
     }
   }
 
-  buscarPrecioPorRango(_appPriceDto: AppPriceDto[], cantidad: number): number {
-    let result: number;
-
-    if (_appPriceDto.length == 0) {
-      _appPriceDto = this.item.appProductsGetDto.appPriceDto;
-    }
-
-    const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta,
-    );
-
-    if (precio != null && precio.length > 0) {
-      result = precio[0].precio;
-    } else {
-      result = _appPriceDto[0].precio;
-    }
-
-    return result;
-  }
-  buscarPrecioMaximoPorRango(
-    _appPriceDto: AppPriceDto[],
-    cantidad: number,
-  ): number {
-    let result: number;
-
-    const precio = _appPriceDto.filter(
-      (x) => cantidad >= x.desde && cantidad <= x.hasta,
-    );
-
-    if (precio != null && precio.length > 0) {
-      result = precio[0].precioMaximo;
-    } else {
-      result = _appPriceDto[0].precio;
-    }
-
-    return result;
-  }
-  async buscaPrecioProductoCantidad(appProductId: number, cantidad: number) {
-    let result: number;
-
-    //let filter:AppRecipesByAppDetailQuotesQueryFilter;
-    const filter = {
-      appProuctId: appProductId,
-      cantidad,
-    };
-
-    await this.productoService
-      .buscaProductoCantidad(filter)
-      .subscribe((resp) => {
-        result = 1;
-        return result;
-      });
-  }
   //Evento llamado desde Componente
   cantidadChanged(event: number) {
     this.form.get('total').setValue(this.form.get('precio').value * +event);
@@ -2743,9 +3084,7 @@ export class EditPage implements OnInit {
       appProductConversionGetDto.yDenominador,
       cantidad,
     );
-    const result = conversion.getCantidadAlternativa();
-
-    return result;
+    return conversion.getCantidadAlternativa();
   }
 
   calculaConversion(
@@ -2760,10 +3099,6 @@ export class EditPage implements OnInit {
         medidaOpuestaRollo: 22.2758,
         medidaBasicaRollo: 448.9176,
       };
-    }
-
-    if (cantidadSolicitada <= 0) {
-      return null;
     }
 
     if (cantidadSolicitada <= 0) {
@@ -2788,12 +3123,10 @@ export class EditPage implements OnInit {
     conversion.medidaOpuesta = medidaOpuesta;
     const result = conversion.getCantidadPorUnidad();
     const area = conversion.area;
-    const resultObject: ResultConversionUnidadesMetrosCuadrados = {
+    return {
       area,
       resulCantidad: result,
     };
-
-    return resultObject;
   }
 
   medidaBasicaChanged($event) {
@@ -2821,16 +3154,18 @@ export class EditPage implements OnInit {
   }
 
   redondear(numero: number, precision: number) {
-    let result = 0;
-
-    result = +numero / Math.pow(10, +precision);
-
-    return result;
+    return +numero / Math.pow(10, +precision);
   }
 
   onBuscarCaracteristicas() {
+    const detalleEspecificaciones = this.item;
     this.router.navigate(['/menu/especificaciones'], {
-      state: { cotizacion: this.cotizacion },
+      state: {
+        cotizacion: {
+          ...this.cotizacion,
+          appDetailQuotesGetDto: [detalleEspecificaciones],
+        },
+      },
     }); //1 edit
   }
 

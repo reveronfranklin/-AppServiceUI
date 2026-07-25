@@ -4,7 +4,7 @@ import { GeneralService } from './general.service';
 import { Observable, ReplaySubject, of, throwError } from 'rxjs';
 import { AppUnitsGetDto } from '../models/app-units-get-dto';
 import { AppProductsGetDto } from '../models/app-products-get-dto';
-import { catchError } from 'rxjs/Operators';
+import { catchError } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root',
@@ -91,32 +91,53 @@ export class ProductoService {
   }
 
   getPrice(data): Observable<any> {
-    this.controller = 'AppRecipesByAppDetailQuotes/';
-    this.accionPath = 'GetPrice';
-
     this.controller = 'calculoprecio/';
     this.accionPath = 'GetPrice';
 
-    /*return this.http.post<any>(this.basePath + this.controller + this.accionPath, JSON.stringify(data)).pipe(
-        catchError(this.handleError)
-      );*/
-    console.log('Payload en el servicio de getPrice Linea 99', data);
     return this.http
       .post<any>(
         this.basePathVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe(
-        catchError((error) => {
-          console.log(error);
-          if (error.error instanceof ErrorEvent) {
-            console.log(`Error: ${error.error.message}`);
-          } else {
-            console.log(`Error: ${error.message}`);
-          }
-          return of([]);
-        }),
+        catchError(() => of(this.getEmptyPriceResult())),
       );
+  }
+
+  NaturalPriceQuery(data): Observable<any> {
+    this.controller = 'naturalpricequery/';
+    this.accionPath = 'query';
+
+    return this.http
+      .post<any>(
+        this.basePathVertical + this.controller + this.accionPath,
+        JSON.stringify(data),
+      )
+      .pipe();
+  }
+
+  private getEmptyPriceResult(): any {
+    return {
+      data: {
+        precio: 0,
+        precioMasFlete: 0,
+        calculoId: 0,
+        flete: 0,
+        fleteMaximo: 0,
+        porcFlete: 0,
+        precioMaximo: 0,
+        precioMaximoMasFlete: 0,
+        precioPorRango: 0,
+        desde: 0,
+        hasta: 0,
+        porDebajoDeCantidadMinima: false,
+        cantidadPorUnidad: 0,
+        precioPorUnidad: 0,
+        cantidadConvertida: 0,
+        cantidadConvertidaAlternativa: 0,
+        porcMaximoSobrePrecio: 0,
+      },
+    };
   }
 
   private handleError(error: HttpErrorResponse) {

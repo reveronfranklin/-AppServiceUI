@@ -74,7 +74,6 @@ export class CotizacionesListService {
       fechaDesde: fechaDesdeISO,
       fechaHasta: fechaHastaISO,
     };
-    console.log('payload', payload);
     return this.http
       .post<any>(
         this.basePatchVertical + this.controller + this.accionPath,
@@ -341,7 +340,7 @@ export class CotizacionesListService {
 
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePatchVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe();
@@ -354,7 +353,7 @@ export class CotizacionesListService {
 
     return this.http
       .post<any>(
-        this.basePath + this.controller + this.accionPath,
+        this.basePatchVertical + this.controller + this.accionPath,
         JSON.stringify(data),
       )
       .pipe();

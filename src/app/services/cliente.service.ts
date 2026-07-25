@@ -156,6 +156,18 @@ export class ClienteService {
       .pipe();
   }
 
+  DeleteContacto(data): Observable<any> {
+    this.controller = 'MtrClientes/';
+    this.accionPath = 'DeleteContacto';
+
+    return this.http
+      .post<any>(
+        this.gensvc.basePathVertical + this.controller + this.accionPath,
+        JSON.stringify(data)
+      )
+      .pipe();
+  }
+
   ListDireccionesCliente(data): Observable<any> {
     this.controller = 'MtrClientes/';
 

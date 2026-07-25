@@ -48,4 +48,13 @@ export class CobAdjuntosCobranzaService {
       )
       .pipe();
   }
+
+  DeleteAdjuntoCobranza(data): Observable<any> {
+    return this.http
+      .post<any>(
+        this.gensvc.basePathVertical + 'CobAdjuntosCobranza/Delete',
+        JSON.stringify(data)
+      )
+      .pipe();
+  }
 }

@@ -1,24 +1,127 @@
-.text {
-  display: inline-block;
-  vertical-align: middle;
+:host {
+  --page-bg: linear-gradient(180deg, #f6f9fc 0%, #eef3f8 100%);
+  --panel-border: #d8e1ec;
+  --title-color: #17324d;
+  --muted-color: #5f7187;
 }
+
+.search-page {
+  --background: var(--page-bg);
+}
+
+.search-page ion-grid[fixed] {
+  max-width: 1180px;
+  padding-top: 10px;
+  padding-bottom: 14px;
+}
+
+.panel-card {
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 8px 24px rgba(14, 40, 74, 0.08);
+}
+
+ion-card-title {
+  color: var(--title-color);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.variable-row {
+  border: 1px solid #e4ebf4;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  --background: #fbfcfe;
+}
+
+.variable-label {
+  font-size: 0.84rem;
+  margin-right: 8px;
+}
+
+.variable-row ion-select {
+  min-width: 48%;
+}
+
+.products-list ion-item {
+  --padding-start: 8px;
+  --inner-padding-end: 8px;
+  --min-height: 82px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid #e3e9f2;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.products-list ion-item:hover {
+  transform: translateY(-1px);
+  border-color: #c8d8ea;
+  box-shadow: 0 6px 14px rgba(23, 50, 77, 0.08);
+}
+
+.products-list h3 {
+  margin: 0;
+  color: #17324d;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.products-list p {
+  margin: 4px 0 0;
+  color: var(--muted-color);
+  font-size: 0.82rem;
+}
+
+.products-list ion-thumbnail {
+  --size: 62px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f6fb;
+}
+
+.empty-state {
+  border: 1px dashed #cfdced;
+  border-radius: 12px;
+  padding: 24px 14px;
+  text-align: center;
+  color: #5f7187;
+  background: #fbfdff;
+}
+
+.empty-state ion-icon {
+  font-size: 2rem;
+  color: #87a2bf;
+}
+
+.empty-state h3 {
+  margin: 8px 0 4px;
+  font-size: 0.95rem;
+  color: #2b4764;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 .col-filtros {
   @media (min-width: 768px) {
-    // Se activa en tablets y PC
     position: sticky;
     top: 0;
     align-self: flex-start;
     height: fit-content;
     max-height: 90vh;
-    overflow-y: auto; // Permite scroll interno si hay demasiados filtros
+    overflow-y: auto;
   }
 }
 
-// Opcional: Ajuste para la imagen de los productos
-ion-list img {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-  margin-right: 10px;
+@media (max-width: 767px) {
+  ion-grid[fixed] {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .variable-row ion-select {
+    min-width: 42%;
+  }
 }

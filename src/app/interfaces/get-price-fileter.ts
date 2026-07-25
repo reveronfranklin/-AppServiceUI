@@ -10,4 +10,10 @@ export interface GetPriceQueryFilter {
 
   ancho?: number;
 
+  unidadId?: number;
+
+  unidad?: number;
+
+  condicionDePago?: number;
+
 }

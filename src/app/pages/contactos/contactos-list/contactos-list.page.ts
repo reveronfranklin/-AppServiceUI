@@ -4,7 +4,11 @@ import { MtrContactosDto } from '../../../models/mtr-contactos-dto';
 import { IUsuario } from '../../../interfaces/iusuario';
 import { GeneralService } from '../../../services/general.service';
 import { ClienteService } from '../../../services/cliente.service';
-import { ModalController, ActionSheetController } from '@ionic/angular';
+import {
+  ModalController,
+  ActionSheetController,
+  AlertController,
+} from '@ionic/angular';
 import { Router } from '@angular/router';
 import { ContactosCreatePage } from '../contactos-create/contactos-create.page';
 import { ContactosEditPage } from '../contactos-edit/contactos-edit.page';
@@ -25,12 +29,14 @@ export class ContactosListPage implements OnInit {
   usuario: IUsuario;
   cliente: string;
   rif: string;
+  deleting = false;
   @Input() clienteRif: ClienteRif;
   constructor(
     public gs: GeneralService,
     private clienteService: ClienteService,
     private modalCtrl: ModalController,
     public actionSheetController: ActionSheetController,
+    private alertController: AlertController,
     private router: Router,
   ) {}
 
@@ -118,6 +124,54 @@ export class ContactosListPage implements OnInit {
     this.refresh();
   }
 
+  async confirmarEliminarContacto(item) {
+    const alert = await this.alertController.create({
+      header: 'Eliminar contacto',
+      message: `¿Está seguro de eliminar el contacto ${item.nombre}? Dejará de estar disponible.`,
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'Eliminar',
+          role: 'destructive',
+          handler: () => this.eliminarContacto(item),
+        },
+      ],
+    });
+
+    await alert.present();
+  }
+
+  eliminarContacto(item) {
+    if (this.deleting) {
+      return;
+    }
+
+    this.deleting = true;
+    this.clienteService.DeleteContacto({ idContacto: item.idContacto }).subscribe(
+      (resp) => {
+        this.deleting = false;
+
+        if (!resp.meta || resp.meta.isValid !== false) {
+          this.gs.presentToast('Contacto eliminado con éxito', 'success');
+          this.refresh();
+          return;
+        }
+
+        this.gs.presentToast(
+          resp.meta.message || 'No se pudo eliminar el contacto',
+          'danger',
+        );
+      },
+      () => {
+        this.deleting = false;
+        this.gs.presentToast('Error al conectar con el servidor', 'danger');
+      },
+    );
+  }
+
   public async presentActionSheet(item) {
     this.botones = [
       {
@@ -140,6 +194,15 @@ export class ContactosListPage implements OnInit {
         icon: 'clipboard-outline',
         handler: () => {
           this.editarContacto(item);
+        },
+      },
+
+      {
+        text: ' Eliminar',
+        icon: 'trash-outline',
+        role: 'destructive',
+        handler: () => {
+          this.confirmarEliminarContacto(item);
         },
       },
 

@@ -34,13 +34,19 @@
 
 <ion-content>
 
+  <ion-item color="light" *ngIf="sellerInfoMode">
+    <ion-label class="ion-text-wrap">
+      Esta cobranza ya no está en grabación. Puede actualizar su observación y administrar adjuntos; los datos financieros son sólo de consulta.
+    </ion-label>
+  </ion-item>
+
   <ion-card>
     <form [formGroup]="form" novalidate (ngSubmit)="save($event)">
       <ion-list>
         <ion-item>
           <label for="codigoCliente" position="floating">Cliente:</label>
-          <ion-input type="text" formControlName="codigoCliente"></ion-input>
-          <ion-button (click)="onBuscarCliente()">
+          <ion-input type="text" formControlName="codigoCliente" [readonly]="sellerInfoMode"></ion-input>
+          <ion-button (click)="onBuscarCliente()" [disabled]="sellerInfoMode">
             <ion-icon name="search-outline"></ion-icon>
           </ion-button>
           <p *ngIf="codigoClienteField.errors && codigoClienteField.touched">
@@ -51,7 +57,7 @@
         </ion-item>
         <ion-item>
           <ion-label position="floating">Moneda:</ion-label>
-          <ion-select formControlName="idMoneda" (ionChange)="onChangeMoneda($event)" [value]="idMonedaField.value">
+          <ion-select formControlName="idMoneda" (ionChange)="onChangeMoneda($event)" [value]="idMonedaField.value" [disabled]="sellerInfoMode">
             <ion-select-option *ngFor="let item of listMtrTipoMonedasDto" [value]="item.id">
               {{item.descripcion}}
             </ion-select-option>
@@ -60,13 +66,13 @@
 
         <ion-item>
           <label for="montoTransaccion" position="floating">Monto Total:</label>
-          <ion-input type="number" formControlName="montoTransaccion"></ion-input>
+          <ion-input type="number" formControlName="montoTransaccion" [readonly]="sellerInfoMode"></ion-input>
         </ion-item>
 
         <ion-item>
           <ion-label position="floating">Operación</ion-label>
           <ion-select formControlName="idTipoTransaccion" (ionChange)="onChangeTipoTransaccion($event)"
-            [value]="idTipoTransaccionField.value">
+            [value]="idTipoTransaccionField.value" [disabled]="sellerInfoMode">
             <ion-select-option *ngFor="let item of listCobTipoTransaccionDto" [value]="item.idTipoTransaccion">
               {{item.nombreTipoTransaccion}}
             </ion-select-option>
@@ -75,14 +81,14 @@
 
         <ion-item>
           <ion-label position="floating">Cuenta</ion-label>
-          <ion-select formControlName="idBanco" (ionChange)="onChangeBanco($event)" [value]="idBancoField.value">
+          <ion-select formControlName="idBanco" (ionChange)="onChangeBanco($event)" [value]="idBancoField.value" [disabled]="sellerInfoMode">
             <ion-select-option *ngFor="let item of listMtrBancosDto" [value]="item.codigo">
               {{item.nombre}}
             </ion-select-option>
           </ion-select>
         </ion-item>
 
-        <ion-item (click)="showPicker=!showPicker">
+        <ion-item (click)="sellerInfoMode ? null : showPicker=!showPicker">
           <ion-label>Fecha Pago:</ion-label>
           <ion-text slot="end">
             {{this.fechaPagoFormated}}
@@ -119,14 +125,38 @@
         </ion-item> -->
         <ion-item>
           <label for="numReferencia" position="floating">Num. Referencia:</label>
-          <ion-input type="number" formControlName="numReferencia"></ion-input>
+          <ion-input type="number" formControlName="numReferencia" [readonly]="sellerInfoMode"></ion-input>
         </ion-item>
         <ion-item>
           <label for="email" position="floating">Email:</label>
-          <ion-input type="email" formControlName="email"></ion-input>
-          <ion-button (click)="onBuscarContacto()">
+          <ion-input type="email" formControlName="email" [readonly]="sellerInfoMode"></ion-input>
+          <ion-button (click)="onBuscarContacto()" [disabled]="sellerInfoMode">
             <ion-icon name="search-outline"></ion-icon>
           </ion-button>
+        </ion-item>
+        <ion-item>
+          <ion-label position="stacked">Observación del vendedor</ion-label>
+          <ion-textarea
+            formControlName="observacionVendedor"
+            maxlength="4000"
+            [readonly]="!isUsuarioVendedor"
+            autoGrow="true"
+          ></ion-textarea>
+          <ion-note slot="end">
+            {{ (form.get('observacionVendedor')?.value || '').length }}/4000
+          </ion-note>
+        </ion-item>
+        <ion-item>
+          <ion-label position="stacked">Observación de cobranzas</ion-label>
+          <ion-textarea
+            formControlName="observacionCobranzas"
+            maxlength="4000"
+            [readonly]="isUsuarioVendedor"
+            autoGrow="true"
+          ></ion-textarea>
+          <ion-note slot="end">
+            {{ (form.get('observacionCobranzas')?.value || '').length }}/4000
+          </ion-note>
         </ion-item>
 
 
@@ -146,10 +176,10 @@
       </ion-row>
       <div *ngIf="!show">
         <ion-button expand="full" type="submit" [disabled]="form.invalid">
-          Guardar
+          {{ sellerInfoMode ? 'Guardar información' : 'Guardar' }}
         </ion-button>
         <br>
-        <ion-button expand="full" (click)="onGotoGrabacionCobranza()" [disabled]="form.invalid" *ngIf="documento>1">
+        <ion-button expand="full" (click)="onGotoGrabacionCobranza()" [disabled]="form.invalid" *ngIf="documento>1 && !sellerInfoMode">
           Grabar Cobranza
         </ion-button>
       </div>

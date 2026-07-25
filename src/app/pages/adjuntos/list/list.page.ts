@@ -4,7 +4,7 @@ import { GeneralService } from '../../../services/general.service';
 import { ActivatedRoute, Router, NavigationExtras } from '@angular/router';
 import { AdjuntosCobranzaFilter } from '../../../interfaces/adjuntos-cobranza-filter';
 import { CobGeneralCobranzaDto } from 'src/app/models/cob-general-cobranza-dto';
-import { ModalController, Platform, LoadingController } from '@ionic/angular';
+import { ModalController, Platform, LoadingController, AlertController } from '@ionic/angular';
 
 //movil
 import { FotosPage } from '../fotos/fotos.page';
@@ -28,6 +28,7 @@ export class ListPage implements OnInit {
     documentoId: any
 
     adjuntos = []
+    deleting = false;
 
     constructor(
         private cobac: CobAdjuntosCobranzaService,
@@ -36,6 +37,7 @@ export class ListPage implements OnInit {
         // private platform: Platform,
         private modalCtrl: ModalController,
         private lc: LoadingController,
+        private alertController: AlertController,
         private gensvc: GeneralService) { }
 
     ngOnInit() {
@@ -107,6 +109,70 @@ export class ListPage implements OnInit {
             alert(JSON.stringify(error))
         });
 
+    }
+
+    isGrabacion(): boolean {
+        const item = this.itemcobGeneralCobranzaDto;
+        if (!item) return false;
+
+        if (String(item.status || '').trim().toUpperCase() === 'GRABACION') {
+            return true;
+        }
+
+        const isTrue = (value: any) =>
+            value === true || value === 1 || String(value ?? '').trim().toLowerCase() === 'true';
+
+        return !isTrue(item.flagEnviado) &&
+            !isTrue(item.flagConfirmado) &&
+            !isTrue(item.flagAprobado) &&
+            !isTrue(item.flagAnulado) &&
+            !isTrue(item.flagReversado);
+    }
+
+    canDelete(adjunto: any): boolean {
+        const nombreArchivo = String(adjunto?.nombreArchivo ?? adjunto?.NombreArchivo ?? '');
+        return this.isGrabacion() && !/^RC_\d+_Consultado\.pdf$/i.test(nombreArchivo);
+    }
+
+    async confirmarEliminar(adjunto: any) {
+        const alert = await this.alertController.create({
+            header: 'Eliminar adjunto',
+            message: `¿Desea eliminar ${adjunto.nombreArchivo}?`,
+            buttons: [
+                { text: 'Cancelar', role: 'cancel' },
+                {
+                    text: 'Eliminar',
+                    role: 'destructive',
+                    handler: () => this.eliminarAdjunto(adjunto),
+                },
+            ],
+        });
+        await alert.present();
+    }
+
+    eliminarAdjunto(adjunto: any) {
+        if (this.deleting) return;
+        this.deleting = true;
+        this.cobac.DeleteAdjuntoCobranza({
+            documento: Number(this.documentoId),
+            idAdjunto: Number(adjunto.indice ?? adjunto.Indice),
+            usuarioConectado: this.gensvc.GetUsuario()?.user || '',
+        }).subscribe({
+            next: (response) => {
+                this.deleting = false;
+                if (response?.meta?.isValid === false || response?.isValid === false) {
+                    this.gensvc.presentToast(response?.meta?.message || response?.message || 'No se pudo eliminar el adjunto', 'danger');
+                    this.refresh();
+                    return;
+                }
+                this.gensvc.presentToast('Adjunto eliminado correctamente', 'success');
+                this.refresh();
+            },
+            error: () => {
+                this.deleting = false;
+                this.gensvc.presentToast('Error al conectar con el servidor', 'danger');
+            },
+        });
     }
 
     showHeader() {

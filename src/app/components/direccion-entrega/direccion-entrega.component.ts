@@ -19,7 +19,7 @@ export class DireccionEntregaComponent implements OnInit {
 
     this.cotizaService.direccionEntregaCliente$.subscribe(direccionEntregaResult => {
 
-      if( direccionEntregaResult === ''){
+      if(!direccionEntregaResult || direccionEntregaResult === ''){
 
          this.direccionEntregaCliente = [];
       }else{
